@@ -29,6 +29,31 @@ static class Program
 {
     public static int Main()
     {
+        Test.Run("terrain_kinds_expose_correct_rules", () =>
+        {
+            Test.True(new TerrainCell(TerrainKind.Floor).Walkable, "floor walkable");
+            Test.True(!new TerrainCell(TerrainKind.Wall).Walkable, "wall blocked");
+            Test.True(new TerrainCell(TerrainKind.Wall).BlocksSight, "wall blocks sight");
+            Test.True(new TerrainCell(TerrainKind.Pillar).BlocksSight, "pillar blocks sight");
+            Test.True(!new TerrainCell(TerrainKind.LowCover).BlocksSight, "cover permits sight");
+            Test.Equal(1, new TerrainCell(TerrainKind.Elevated).Elevation);
+        });
+
+        Test.Run("mission_definitions_are_valid", () =>
+        {
+            for (var mission = 1; mission <= 3; mission++)
+            {
+                var definition = MissionDefinition.For(mission);
+                Test.Equal(12, definition.Terrain.GetLength(0));
+                Test.Equal(12, definition.Terrain.GetLength(1));
+                foreach (var spawn in definition.Spawns)
+                    Test.True(definition.At(spawn.Position).Walkable, $"mission {mission} invalid spawn {spawn.Position}");
+            }
+            Test.True(MissionDefinition.For(1).Console.HasValue, "mission 1 console");
+            Test.True(MissionDefinition.For(2).Shuttle.HasValue, "mission 2 shuttle");
+            Test.True(MissionDefinition.For(3).Bridge.HasValue, "mission 3 bridge");
+        });
+
         Test.Run("battle_constructs_all_three_missions", () =>
         {
             for (var mission = 1; mission <= 3; mission++)
