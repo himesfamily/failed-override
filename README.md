@@ -2,6 +2,16 @@
 
 Requires Godot 4.7.2 .NET and the .NET 8 SDK. Import `project.godot`, build, and press F5. Existing campaign saves are stored separately under Godot's `user://` data and remain available through **Continue saved campaign**.
 
+## Development
+
+Run the dependency-free battle logic checks with `dotnet run --project Tests/FailedOverride.LogicTests.csproj`.
+
+This project is tracked in a local Git repository. No online remote repository is configured.
+
+## Version 3.11 readable tactical terrain
+
+All three missions now use clean generated battlefields whose appearance matches their rules. Raised walls and pillars block movement and gunfire, low cargo blocks movement and grants 1 point of ranged cover, and marked raised containers can be climbed from any adjacent side for 2 extra movement points. Shooting downward gains 2 damage; shooting upward loses 1 damage. The painted battlefield underlays are temporarily disabled while these layouts are playtested, but objective and character artwork remains.
+
 ## Mission 3 roster update
 
 Otto, Odette, and Tiger remain story characters aboard the freight ship but are no longer controllable combat units. Maintenance ducts, traps, barking, and capture rules are not used by Mission 3.

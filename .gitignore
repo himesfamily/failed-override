@@ -1,9 +1,11 @@
 .godot/
 .superpowers/
+.tools/
 bin/
 obj/
 Tests/bin/
 Tests/obj/
+Tests/*.uid
 .DS_Store
 Builds/
 builds/
