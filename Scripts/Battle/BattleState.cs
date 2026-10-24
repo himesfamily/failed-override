@@ -14,7 +14,16 @@ public sealed class BattleState {
  static Unit Make(string id,string name,string token,Role role,Team team,int hp,int armor,int move)=>new(){Id=id,Name=name,Token=token,Role=role,Team=team,BaseHp=hp,Hp=hp,BaseArmor=armor,BaseMove=move};
  public void Note(string s){Log.Add(s);if(Log.Count>30)Log.RemoveAt(0);} public TerrainCell TerrainAt(Cell c)=>Definition.At(c); public bool Floor(Cell c)=>TerrainAt(c).Walkable; public Unit? At(Cell c)=>Units.FirstOrDefault(u=>u.Alive&&u.Position==c);
  public bool Command(Unit u)=>Phase==Phase.Player&&u.Alive&&!u.Captured&&u.Team==Team.Player;public bool Enter(Unit u,Cell c)=>Floor(c)&&(Map[c.Y][c.X]!='v'||u.Small);
- public Dictionary<Cell,int> Reach(Unit u){ Dictionary<Cell,int> seen=new(){{u.Position,0}};Queue<Cell>q=new();q.Enqueue(u.Position);while(q.TryDequeue(out var c)){if(seen[c]>=u.Move)continue;foreach(var n in c.Neighbors())if(Enter(u,n)&&At(n)==null&&!seen.ContainsKey(n)){seen[n]=seen[c]+1;q.Enqueue(n);}}return seen;}
+ public int MovementCost(Cell from,Cell to)=>TerrainAt(from).Elevation==0&&TerrainAt(to).Elevation==1?3:1;
+ (Dictionary<Cell,int> costs,Dictionary<Cell,Cell> previous) Search(Unit u){
+  Dictionary<Cell,int> costs=new(){{u.Position,0}};Dictionary<Cell,Cell> previous=[];PriorityQueue<Cell,int> open=new();open.Enqueue(u.Position,0);
+  while(open.TryDequeue(out var c,out var queued)){if(queued!=costs[c]||queued>=u.Move)continue;foreach(var n in c.Neighbors()){
+   if(!Enter(u,n)||(At(n)!=null&&n!=u.Position))continue;int next=queued+MovementCost(c,n);if(next>u.Move||costs.TryGetValue(n,out var old)&&old<=next)continue;
+   costs[n]=next;previous[n]=c;open.Enqueue(n,next);
+  }}return(costs,previous);
+ }
+ public Dictionary<Cell,int> Reach(Unit u)=>Search(u).costs;
+ public IReadOnlyList<Cell> Path(Unit u,Cell destination){var search=Search(u);if(!search.costs.ContainsKey(destination))return[];List<Cell> path=[destination];while(path[^1]!=u.Position)path.Add(search.previous[path[^1]]);path.Reverse();return path;}
  public bool Move(Unit u,Cell c){if(!Command(u)||u.Moved||c==u.Position||!Reach(u).ContainsKey(c))return false;moveOrigins[u.Id]=u.Position;u.Position=c;u.Moved=true;if(u.Role==Role.Dog){Reveal();if(Units.Any(x=>!x.Captured&&x.Role==Role.Twin&&x.Position.Distance(u.Position)==1)){Noise=null;Note("A twin calms Tiger down.");}else if(Noise!=null)Noise=u.Position;}Note($"{u.Name} moved.");return true;}
  public bool UndoMove(Unit u){if(!Command(u)||!u.Moved||u.Acted||!moveOrigins.TryGetValue(u.Id,out var origin)||At(origin)!=null)return false;u.Position=origin;u.Moved=false;moveOrigins.Remove(u.Id);Note($"{u.Name} canceled the move.");return true;}
  public bool Los(Cell a,Cell b){int dx=b.X-a.X,dy=b.Y-a.Y,n=Math.Max(Math.Abs(dx),Math.Abs(dy));for(int i=1;i<=n;i++){var c=new Cell((int)Math.Round(a.X+dx*(double)i/n),(int)Math.Round(a.Y+dy*(double)i/n));if(!Floor(c))return false;}return true;}

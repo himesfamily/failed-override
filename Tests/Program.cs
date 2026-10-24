@@ -54,6 +54,22 @@ static class Program
             Test.True(MissionDefinition.For(3).Bridge.HasValue, "mission 3 bridge");
         });
 
+        Test.Run("weighted_movement_costs_and_paths", () =>
+        {
+            var battle = new BattleState(1);
+            Test.Equal(1, battle.MovementCost(new Cell(4, 7), new Cell(5, 7)));
+            Test.Equal(3, battle.MovementCost(new Cell(5, 7), new Cell(5, 6)));
+            Test.Equal(1, battle.MovementCost(new Cell(5, 6), new Cell(6, 6)));
+            Test.Equal(1, battle.MovementCost(new Cell(5, 6), new Cell(5, 7)));
+            var xander = battle.Units.Single(u => u.Id == "xander");
+            var destination = new Cell(1, 9);
+            var path = battle.Path(xander, destination);
+            Test.True(path.Count >= 2, "path exists");
+            Test.Equal(xander.Position, path[0]);
+            Test.Equal(destination, path[^1]);
+            Test.True(path.All(c => battle.TerrainAt(c).Walkable), "path stays walkable");
+        });
+
         Test.Run("battle_constructs_all_three_missions", () =>
         {
             for (var mission = 1; mission <= 3; mission++)
