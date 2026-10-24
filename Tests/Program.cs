@@ -99,6 +99,29 @@ static class Program
             Test.True(battle.LastMovePath.All(c => battle.TerrainAt(c).Walkable), "animation path is legal");
         });
 
+        Test.Run("undo_reverses_the_original_route_after_descending", () =>
+        {
+            var battle = new BattleState(1);
+            var xander = battle.Units.Single(u => u.Id == "xander");
+            xander.Position = new Cell(5, 6);
+            Test.True(battle.Move(xander, new Cell(8, 9)), "downhill move succeeds");
+            Test.True(battle.UndoMove(xander), "undo succeeds");
+            Test.True(battle.LastMovePath.Count > 1, "undo has animation path");
+            Test.Equal(new Cell(8, 9), battle.LastMovePath[0]);
+            Test.Equal(new Cell(5, 6), battle.LastMovePath[^1]);
+        });
+
+        Test.Run("ompok_routes_around_a_blocked_bridge_approach", () =>
+        {
+            var battle = new BattleState(3);
+            var ompok = battle.Units.Single(u => u.Role == Role.OmpokProxy);
+            var blocker = battle.Units.Single(u => u.Id == "xander");
+            ompok.Position = new Cell(4, 1); blocker.Position = new Cell(5, 1);
+            battle.StartEnemy();
+            for (var i = 0; i < 12 && battle.BridgeProgress == 0; i++) battle.Enemy(ompok);
+            Test.True(battle.BridgeProgress > 0, "Ompok uses the open lower route");
+        });
+
         Test.Run("battle_constructs_all_three_missions", () =>
         {
             for (var mission = 1; mission <= 3; mission++)
