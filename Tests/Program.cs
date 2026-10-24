@@ -89,6 +89,16 @@ static class Program
             Test.Equal(0, melee.HighGroundProtection);
         });
 
+        Test.Run("movement_records_the_legal_animation_path", () =>
+        {
+            var battle = new BattleState(1);
+            var xander = battle.Units.Single(u => u.Id == "xander");
+            Test.True(battle.Move(xander, new Cell(1, 9)), "move succeeds");
+            Test.Equal(new Cell(1, 10), battle.LastMovePath[0]);
+            Test.Equal(new Cell(1, 9), battle.LastMovePath[^1]);
+            Test.True(battle.LastMovePath.All(c => battle.TerrainAt(c).Walkable), "animation path is legal");
+        });
+
         Test.Run("battle_constructs_all_three_missions", () =>
         {
             for (var mission = 1; mission <= 3; mission++)
