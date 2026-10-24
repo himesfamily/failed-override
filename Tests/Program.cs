@@ -70,6 +70,25 @@ static class Program
             Test.True(path.All(c => battle.TerrainAt(c).Walkable), "path stays walkable");
         });
 
+        Test.Run("cover_and_elevation_modify_ranged_damage", () =>
+        {
+            var battle = new BattleState(1);
+            var attacker = battle.Units.Single(u => u.Id == "xander");
+            var target = battle.Units.First(u => u.Role == Role.Droid);
+            attacker.Position = new Cell(1, 8); target.Position = new Cell(5, 8);
+            var covered = battle.PreviewDamageBreakdown(attacker, target, new Weapon("Test rifle", 8, 6));
+            Test.Equal(1, covered.LowCoverProtection);
+            Test.True(battle.Los(attacker.Position, target.Position), "low cover permits sight");
+            attacker.Position = new Cell(5, 6); target.Position = new Cell(5, 7);
+            var downhill = battle.PreviewDamageBreakdown(attacker, target, new Weapon("Test rifle", 8, 3));
+            Test.Equal(2, downhill.HighGroundBonus);
+            attacker.Position = new Cell(5, 7); target.Position = new Cell(5, 6);
+            var uphill = battle.PreviewDamageBreakdown(attacker, target, new Weapon("Test rifle", 8, 3));
+            Test.Equal(1, uphill.HighGroundProtection);
+            var melee = battle.PreviewDamageBreakdown(attacker, target, new Weapon("Blade", 8, 1));
+            Test.Equal(0, melee.HighGroundProtection);
+        });
+
         Test.Run("battle_constructs_all_three_missions", () =>
         {
             for (var mission = 1; mission <= 3; mission++)
