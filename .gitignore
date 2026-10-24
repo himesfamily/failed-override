@@ -1,0 +1,13 @@
+.godot/
+.superpowers/
+bin/
+obj/
+Tests/bin/
+Tests/obj/
+.DS_Store
+Builds/
+builds/
+exports/
+*.pck
+feedback/
+savegame*.json
