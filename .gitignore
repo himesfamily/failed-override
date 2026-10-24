@@ -1,5 +1,6 @@
 .godot/
 .superpowers/
+.tools/
 bin/
 obj/
 Tests/bin/
