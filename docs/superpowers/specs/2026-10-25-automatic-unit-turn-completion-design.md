@@ -28,4 +28,3 @@ Alternatives considered were patching individual buttons or automatically consum
 - A unit is complete only when both `Moved` and `Acted` are true.
 - Captured or defeated units are not considered ready.
 - Existing attack presentation remains visible until the player clicks; turn handoff occurs after dismissal.
-
