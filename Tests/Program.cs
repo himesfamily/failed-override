@@ -116,17 +116,25 @@ static class Program
         {
             var moveThenAct = new BattleState(1);
             var first = moveThenAct.Units.Single(u => u.Id == "xander");
-            first.Moved = true;
+            var firstTarget = moveThenAct.Units.First(u => u.Role == Role.Droid);
+            firstTarget.Position = new Cell(2, 9);
+            Test.True(moveThenAct.Move(first, new Cell(1, 9)), "first unit moves");
             Test.True(!moveThenAct.TurnComplete(first), "moving alone keeps the unit ready");
-            first.Acted = true;
+            Test.True(moveThenAct.Attack(first, firstTarget, 1), "first unit attacks after moving");
             Test.True(moveThenAct.TurnComplete(first), "an action after movement completes the unit");
+            Test.Equal("nance", moveThenAct.NextReadyPlayer()!.Id);
 
             var actThenMove = new BattleState(1);
             var second = actThenMove.Units.Single(u => u.Id == "xander");
-            second.Acted = true;
+            var secondTarget = actThenMove.Units.First(u => u.Role == Role.Droid);
+            secondTarget.Position = new Cell(2, 10);
+            actThenMove.Units.Single(u => u.Id == "nance").Position = new Cell(4, 10);
+            actThenMove.Units.Single(u => u.Id == "akiko").Position = new Cell(5, 10);
+            Test.True(actThenMove.Attack(second, secondTarget, 1), "second unit attacks before moving");
             Test.True(!actThenMove.TurnComplete(second), "acting alone leaves movement available");
-            second.Moved = true;
+            Test.True(actThenMove.Move(second, new Cell(1, 9)), "second unit moves after acting");
             Test.True(actThenMove.TurnComplete(second), "movement after an action completes the unit");
+            Test.Equal("nance", actThenMove.NextReadyPlayer()!.Id);
         });
 
         Test.Run("player_turn_completion_ignores_defeated_and_captured_units", () =>
