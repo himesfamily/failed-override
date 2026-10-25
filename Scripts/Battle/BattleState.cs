@@ -6,6 +6,8 @@ public sealed class BattleState {
  public List<Unit> Units {get;}=[]; public List<string> Log {get;}=[]; public CampaignState Campaign {get;}
  public Phase Phase {get;private set;}=Phase.Player; public int Round {get;private set;}=1; public Cell Console=>Definition.Console??new(6,4); public bool ConsoleUsed {get;private set;} private int robotId; readonly Dictionary<string,Cell> moveOrigins=[];readonly Dictionary<string,IReadOnlyList<Cell>> movePaths=[];public IReadOnlyList<Cell> LastMovePath {get;private set;}=[];public Cell Bridge=>Definition.Bridge??new(9,1);public int BridgeProgress {get;private set;}public string DefeatReason {get;private set;}="";public Cell? Noise {get;private set;}public HashSet<Cell> UsedTraps {get;}=[];
  public Unit Issac=>Units.Single(u=>u.Role==Role.Officer); public int Robots=>Units.Count(u=>u.Alive&&u.Role==Role.Robot); public bool Finished=>Phase is Phase.Victory or Phase.Defeat;
+ public bool TurnComplete(Unit u)=>u.Moved&&u.Acted;
+ public bool PlayerTurnComplete()=>Units.Where(u=>u.Alive&&u.Team==Team.Player&&!u.Captured).All(TurnComplete);
  public BattleState(int mission=1,CampaignState? campaign=null){ Mission=mission; Campaign=campaign??new(); Definition=MissionDefinition.For(mission); Map=Definition.UnitRows;
  int d=0; for(int y=0;y<12;y++)for(int x=0;x<12;x++){ Unit? u=Map[y][x] switch {
   'X'=>Make("xander","Xander McRaven","X",Role.Scout,Team.Player,18,1,6),'N'=>Make("nance","Nance Parker","N",Role.Shapeshifter,Team.Player,20,1,5),

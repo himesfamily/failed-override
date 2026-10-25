@@ -112,6 +112,36 @@ static class Program
             Test.Equal(new Cell(5, 6), battle.LastMovePath[^1]);
         });
 
+        Test.Run("unit_turn_completes_after_move_then_action_or_action_then_move", () =>
+        {
+            var moveThenAct = new BattleState(1);
+            var first = moveThenAct.Units.Single(u => u.Id == "xander");
+            first.Moved = true;
+            Test.True(!moveThenAct.TurnComplete(first), "moving alone keeps the unit ready");
+            first.Acted = true;
+            Test.True(moveThenAct.TurnComplete(first), "an action after movement completes the unit");
+
+            var actThenMove = new BattleState(1);
+            var second = actThenMove.Units.Single(u => u.Id == "xander");
+            second.Acted = true;
+            Test.True(!actThenMove.TurnComplete(second), "acting alone leaves movement available");
+            second.Moved = true;
+            Test.True(actThenMove.TurnComplete(second), "movement after an action completes the unit");
+        });
+
+        Test.Run("player_turn_completion_ignores_defeated_and_captured_units", () =>
+        {
+            var battle = new BattleState(1);
+            var xander = battle.Units.Single(u => u.Id == "xander");
+            var nance = battle.Units.Single(u => u.Id == "nance");
+            var akiko = battle.Units.Single(u => u.Id == "akiko");
+            xander.Hp = 0;
+            nance.Captured = true;
+            akiko.Moved = akiko.Acted = true;
+
+            Test.True(battle.PlayerTurnComplete(), "inactive units do not block the enemy phase");
+        });
+
         Test.Run("ompok_routes_around_a_blocked_bridge_approach", () =>
         {
             var battle = new BattleState(3);
