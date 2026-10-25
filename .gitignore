@@ -11,5 +11,5 @@ Builds/
 builds/
 exports/
 *.pck
-feedback/
+/feedback/
 savegame*.json

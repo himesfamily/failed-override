@@ -1,4 +1,5 @@
 using FailedOverride.Battle;
+using FailedOverride.UI;
 using FailedOverride.Units;
 
 static class Test
@@ -131,6 +132,51 @@ static class Program
                 Test.True(battle.Map.All(row => row.Length == 12), $"mission {mission} width");
                 Test.True(battle.Units.Any(unit => unit.Team == Team.Player), $"mission {mission} player spawn");
             }
+        });
+
+        Test.Run("tutorial_dismissal_preserves_active_lesson", () =>
+        {
+            var presentation = new TutorialPresentationState();
+            presentation.Show("move");
+
+            presentation.Dismiss();
+
+            Test.Equal("move", presentation.LessonId);
+            Test.True(!presentation.IsVisible, "dismissal hides the current presentation");
+        });
+
+        Test.Run("tutorial_incomplete_lesson_can_be_presented_again", () =>
+        {
+            var presentation = new TutorialPresentationState();
+            presentation.Show("high-ground");
+            presentation.Dismiss();
+
+            presentation.Show("high-ground");
+
+            Test.Equal("high-ground", presentation.LessonId);
+            Test.True(presentation.IsVisible, "the incomplete lesson is visible again");
+        });
+
+        Test.Run("tutorial_completion_clears_lesson", () =>
+        {
+            var presentation = new TutorialPresentationState();
+            presentation.Show("attack");
+
+            presentation.Complete();
+
+            Test.Equal("", presentation.LessonId);
+            Test.True(!presentation.IsVisible, "completion hides the presentation");
+        });
+
+        Test.Run("tutorial_reset_clears_presentation", () =>
+        {
+            var presentation = new TutorialPresentationState();
+            presentation.Show("console");
+
+            presentation.Reset();
+
+            Test.Equal("", presentation.LessonId);
+            Test.True(!presentation.IsVisible, "reset hides the presentation");
         });
 
         return Test.ExitCode;
