@@ -11,5 +11,6 @@
     <Compile Include="../Scripts/Battle/*.cs" />
     <Compile Include="../Scripts/Campaign/CampaignState.cs" />
     <Compile Include="../Scripts/Units/Unit.cs" />
+    <Compile Include="../Scripts/UI/TutorialPresentationState.cs" />
   </ItemGroup>
 </Project>
