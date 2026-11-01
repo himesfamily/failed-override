@@ -1,3 +1,5 @@
+using FailedOverride.Units;
+
 namespace FailedOverride.UI;
 
 public enum EnemyTurnPacingPhase
@@ -16,6 +18,13 @@ public sealed class EnemyTurnPacingState
     public EnemyTurnPacingPhase Phase { get; private set; }
     public bool PreviewStartedThisFrame { get; private set; }
     public bool ActionReadyThisFrame { get; private set; }
+
+    public static Unit? TakeNextLiving(Queue<Unit> enemies)
+    {
+        while (enemies.TryDequeue(out var enemy))
+            if (enemy.Alive) return enemy;
+        return null;
+    }
 
     public void BeginIntermission()
     {

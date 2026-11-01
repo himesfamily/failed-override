@@ -326,6 +326,22 @@ static class Program
             Test.True(!pacing.ActionReadyThisFrame, "large delta cannot skip the preview frame");
         });
 
+        Test.Run("enemy_turn_pacing_skips_dead_queued_enemies", () =>
+        {
+            var battle = new BattleState(1);
+            var enemies = new Queue<Unit>(battle.Units.Where(u => u.Team == Team.Enemy));
+            enemies.Peek().Hp = 0;
+
+            var next = EnemyTurnPacingState.TakeNextLiving(enemies);
+
+            Test.True(next != null && next.Alive, "the next living enemy is selected");
+            while (enemies.TryDequeue(out var remaining)) remaining.Hp = 0;
+            var deadOnly = new Queue<Unit>(battle.Units.Where(u => u.Team == Team.Enemy));
+            foreach (var enemy in deadOnly) enemy.Hp = 0;
+            Test.True(EnemyTurnPacingState.TakeNextLiving(deadOnly) == null, "dead-only queue has no preview target");
+            Test.Equal(0, deadOnly.Count);
+        });
+
         Test.Run("tutorial_dismissal_preserves_active_lesson", () =>
         {
             var presentation = new TutorialPresentationState();
