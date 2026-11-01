@@ -291,6 +291,41 @@ static class Program
             Test.True(!presentation.DefersBattleResult, "result UI may appear after dismissal");
         });
 
+        Test.Run("enemy_turn_pacing_waits_then_previews", () =>
+        {
+            var pacing = new EnemyTurnPacingState();
+            pacing.BeginIntermission();
+
+            pacing.Advance(0.99);
+            Test.Equal(EnemyTurnPacingPhase.Intermission, pacing.Phase);
+            Test.True(!pacing.PreviewStartedThisFrame, "preview does not start before one second");
+
+            pacing.Advance(0.01);
+            Test.Equal(EnemyTurnPacingPhase.Preview, pacing.Phase);
+            Test.True(pacing.PreviewStartedThisFrame, "preview starts at one second");
+            Test.True(!pacing.ActionReadyThisFrame, "enemy remains stationary when preview begins");
+
+            pacing.Advance(0.59);
+            Test.Equal(EnemyTurnPacingPhase.Preview, pacing.Phase);
+            Test.True(!pacing.ActionReadyThisFrame, "preview lasts six tenths of a second");
+
+            pacing.Advance(0.01);
+            Test.Equal(EnemyTurnPacingPhase.Idle, pacing.Phase);
+            Test.True(pacing.ActionReadyThisFrame, "enemy acts after the preview");
+        });
+
+        Test.Run("enemy_turn_pacing_large_delta_preserves_preview_frame", () =>
+        {
+            var pacing = new EnemyTurnPacingState();
+            pacing.BeginIntermission();
+
+            pacing.Advance(4.0);
+
+            Test.Equal(EnemyTurnPacingPhase.Preview, pacing.Phase);
+            Test.True(pacing.PreviewStartedThisFrame, "large delta still begins a preview");
+            Test.True(!pacing.ActionReadyThisFrame, "large delta cannot skip the preview frame");
+        });
+
         Test.Run("tutorial_dismissal_preserves_active_lesson", () =>
         {
             var presentation = new TutorialPresentationState();
