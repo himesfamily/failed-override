@@ -172,6 +172,67 @@ static class Program
             }
         });
 
+        Test.Run("ranged_attack_effects_follow_weapon_range_and_allegiance", () =>
+        {
+            var presentation = new RangedAttackPresentationState();
+
+            presentation.Start(Team.Player, 1);
+            Test.Equal(RangedAttackEffect.None, presentation.Effect);
+            Test.True(!presentation.Active, "melee attacks skip projectile presentation");
+
+            presentation.Start(Team.Player, 4);
+            Test.Equal(RangedAttackEffect.HeroBolt, presentation.Effect);
+            Test.True(presentation.Active, "player ranged attacks use the hero bolt");
+
+            presentation.Start(Team.Enemy, 5);
+            Test.Equal(RangedAttackEffect.EnemyBeam, presentation.Effect);
+            Test.True(presentation.Active, "enemy ranged attacks use the enemy beam");
+        });
+
+        Test.Run("hero_bolt_completes_after_quarter_second", () =>
+        {
+            var presentation = new RangedAttackPresentationState();
+            presentation.Start(Team.Player, 4);
+
+            presentation.Advance(0.125);
+            Test.True(presentation.Active, "hero bolt remains active at its midpoint");
+            Test.Equal(0.5f, presentation.Progress);
+            Test.True(!presentation.CompletedThisFrame, "midpoint is not complete");
+
+            presentation.Advance(0.125);
+            Test.True(!presentation.Active, "hero bolt completes at 0.25 seconds");
+            Test.Equal(1f, presentation.Progress);
+            Test.True(presentation.CompletedThisFrame, "completion is reported on the finishing frame");
+        });
+
+        Test.Run("enemy_beam_completes_after_four_tenths_second", () =>
+        {
+            var presentation = new RangedAttackPresentationState();
+            presentation.Start(Team.Enemy, 5);
+
+            presentation.Advance(0.2);
+            Test.True(presentation.Active, "enemy beam remains active at its midpoint");
+            Test.Equal(0.5f, presentation.Progress);
+
+            presentation.Advance(0.2);
+            Test.True(!presentation.Active, "enemy beam completes at 0.4 seconds");
+            Test.True(presentation.CompletedThisFrame, "beam completion is reported");
+        });
+
+        Test.Run("ranged_effect_large_delta_completes_only_once", () =>
+        {
+            var presentation = new RangedAttackPresentationState();
+            presentation.Start(Team.Player, 3);
+
+            presentation.Advance(1.0);
+            Test.True(!presentation.Active, "large delta completes the effect");
+            Test.True(presentation.CompletedThisFrame, "large delta reports completion");
+            Test.Equal(1f, presentation.ImpactProgress);
+
+            presentation.Advance(1.0);
+            Test.True(!presentation.CompletedThisFrame, "completion is not repeated");
+        });
+
         Test.Run("tutorial_dismissal_preserves_active_lesson", () =>
         {
             var presentation = new TutorialPresentationState();
