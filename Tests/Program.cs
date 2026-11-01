@@ -233,6 +233,16 @@ static class Program
             Test.True(!presentation.CompletedThisFrame, "completion is not repeated");
         });
 
+        Test.Run("ranged_effect_preserves_preimpact_health", () =>
+        {
+            var presentation = new RangedAttackPresentationState();
+            presentation.Start(Team.Enemy, 4);
+
+            Test.Equal(16, presentation.DisplayedTargetHp(16, 9));
+            presentation.Advance(0.4);
+            Test.Equal(9, presentation.DisplayedTargetHp(16, 9));
+        });
+
         Test.Run("tutorial_dismissal_preserves_active_lesson", () =>
         {
             var presentation = new TutorialPresentationState();

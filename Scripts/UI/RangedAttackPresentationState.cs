@@ -22,6 +22,8 @@ public sealed class RangedAttackPresentationState
     public float ImpactProgress => Progress >= 1 ? 1 : Math.Clamp((Progress - 0.8f) / 0.2f, 0, 1);
     public bool CompletedThisFrame { get; private set; }
 
+    public int DisplayedTargetHp(int hpBefore, int hpAfter) => Active ? hpBefore : hpAfter;
+
     public void Start(Team team, int weaponRange)
     {
         elapsed = 0;
