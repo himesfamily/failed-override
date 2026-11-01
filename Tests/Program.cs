@@ -236,11 +236,28 @@ static class Program
         Test.Run("ranged_effect_preserves_preimpact_health", () =>
         {
             var presentation = new RangedAttackPresentationState();
-            presentation.Start(Team.Enemy, 4);
+            presentation.Prepare(Team.Enemy, 4);
 
             Test.Equal(16, presentation.DisplayedTargetHp(16, 9));
+            Test.True(presentation.Pending, "prepared effect remains pending during movement");
+            Test.True(presentation.Active, "prepared effect preserves the target during movement");
+            Test.True(presentation.BlocksGameplayInput, "pending combat blocks commands");
+            Test.True(presentation.DefersBattleResult, "pending combat defers result UI");
+
+            presentation.Activate();
+            presentation.Advance(0.32);
+            Test.True(presentation.ImpactStartedThisFrame, "impact starts at eighty percent");
+            Test.Equal(9, presentation.DisplayedTargetHp(16, 9));
+
             presentation.Advance(0.4);
             Test.Equal(9, presentation.DisplayedTargetHp(16, 9));
+            Test.True(presentation.Pending, "portrait presentation remains pending after impact");
+            Test.True(presentation.BlocksGameplayInput, "portrait still blocks commands");
+
+            presentation.CompletePresentation();
+            Test.True(!presentation.Pending, "dismissal completes the presentation");
+            Test.True(!presentation.BlocksGameplayInput, "commands resume after dismissal");
+            Test.True(!presentation.DefersBattleResult, "result UI may appear after dismissal");
         });
 
         Test.Run("tutorial_dismissal_preserves_active_lesson", () =>
