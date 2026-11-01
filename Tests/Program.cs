@@ -150,6 +150,37 @@ static class Program
             Test.True(battle.PlayerTurnComplete(), "inactive units do not block the enemy phase");
         });
 
+        Test.Run("selection_change_waits_only_for_acted_unmoved_unit", () =>
+        {
+            var battle = new BattleState(1);
+            var xander = battle.Units.Single(u => u.Id == "xander");
+            var nance = battle.Units.Single(u => u.Id == "nance");
+            xander.Acted = true;
+
+            Test.True(battle.WaitForSelectionChange(xander, nance), "switching commits an acted hero");
+            Test.True(battle.TurnComplete(xander), "automatic Wait completes the previous hero");
+            Test.Equal("Xander McRaven waits.", battle.Log[^1]);
+
+            var sameUnit = new BattleState(1);
+            var sameXander = sameUnit.Units.Single(u => u.Id == "xander");
+            sameXander.Acted = true;
+            Test.True(!sameUnit.WaitForSelectionChange(sameXander, sameXander), "reselecting does not wait");
+            Test.True(!sameXander.Moved, "reselecting preserves movement");
+
+            var untouched = new BattleState(1);
+            var untouchedXander = untouched.Units.Single(u => u.Id == "xander");
+            var untouchedNance = untouched.Units.Single(u => u.Id == "nance");
+            Test.True(!untouched.WaitForSelectionChange(untouchedXander, untouchedNance), "switching before acting is free");
+            Test.True(!untouchedXander.Moved, "untouched hero keeps movement");
+
+            var moved = new BattleState(1);
+            var movedXander = moved.Units.Single(u => u.Id == "xander");
+            var movedNance = moved.Units.Single(u => u.Id == "nance");
+            movedXander.Moved = true;
+            Test.True(!moved.WaitForSelectionChange(movedXander, movedNance), "moving without acting does not wait");
+            Test.True(!movedXander.Acted, "moved hero keeps the action");
+        });
+
         Test.Run("ompok_routes_around_a_blocked_bridge_approach", () =>
         {
             var battle = new BattleState(3);
