@@ -150,6 +150,37 @@ static class Program
             Test.True(battle.PlayerTurnComplete(), "inactive units do not block the enemy phase");
         });
 
+        Test.Run("selection_change_waits_only_for_acted_unmoved_unit", () =>
+        {
+            var battle = new BattleState(1);
+            var xander = battle.Units.Single(u => u.Id == "xander");
+            var nance = battle.Units.Single(u => u.Id == "nance");
+            xander.Acted = true;
+
+            Test.True(battle.WaitForSelectionChange(xander, nance), "switching commits an acted hero");
+            Test.True(battle.TurnComplete(xander), "automatic Wait completes the previous hero");
+            Test.Equal("Xander McRaven waits.", battle.Log[^1]);
+
+            var sameUnit = new BattleState(1);
+            var sameXander = sameUnit.Units.Single(u => u.Id == "xander");
+            sameXander.Acted = true;
+            Test.True(!sameUnit.WaitForSelectionChange(sameXander, sameXander), "reselecting does not wait");
+            Test.True(!sameXander.Moved, "reselecting preserves movement");
+
+            var untouched = new BattleState(1);
+            var untouchedXander = untouched.Units.Single(u => u.Id == "xander");
+            var untouchedNance = untouched.Units.Single(u => u.Id == "nance");
+            Test.True(!untouched.WaitForSelectionChange(untouchedXander, untouchedNance), "switching before acting is free");
+            Test.True(!untouchedXander.Moved, "untouched hero keeps movement");
+
+            var moved = new BattleState(1);
+            var movedXander = moved.Units.Single(u => u.Id == "xander");
+            var movedNance = moved.Units.Single(u => u.Id == "nance");
+            movedXander.Moved = true;
+            Test.True(!moved.WaitForSelectionChange(movedXander, movedNance), "moving without acting does not wait");
+            Test.True(!movedXander.Acted, "moved hero keeps the action");
+        });
+
         Test.Run("ompok_routes_around_a_blocked_bridge_approach", () =>
         {
             var battle = new BattleState(3);
@@ -170,6 +201,145 @@ static class Program
                 Test.True(battle.Map.All(row => row.Length == 12), $"mission {mission} width");
                 Test.True(battle.Units.Any(unit => unit.Team == Team.Player), $"mission {mission} player spawn");
             }
+        });
+
+        Test.Run("ranged_attack_effects_follow_weapon_range_and_allegiance", () =>
+        {
+            var presentation = new RangedAttackPresentationState();
+
+            presentation.Start(Team.Player, 1);
+            Test.Equal(RangedAttackEffect.None, presentation.Effect);
+            Test.True(!presentation.Active, "melee attacks skip projectile presentation");
+
+            presentation.Start(Team.Player, 4);
+            Test.Equal(RangedAttackEffect.HeroBolt, presentation.Effect);
+            Test.True(presentation.Active, "player ranged attacks use the hero bolt");
+
+            presentation.Start(Team.Enemy, 5);
+            Test.Equal(RangedAttackEffect.EnemyBeam, presentation.Effect);
+            Test.True(presentation.Active, "enemy ranged attacks use the enemy beam");
+        });
+
+        Test.Run("hero_bolt_completes_after_quarter_second", () =>
+        {
+            var presentation = new RangedAttackPresentationState();
+            presentation.Start(Team.Player, 4);
+
+            presentation.Advance(0.125);
+            Test.True(presentation.Active, "hero bolt remains active at its midpoint");
+            Test.Equal(0.5f, presentation.Progress);
+            Test.True(!presentation.CompletedThisFrame, "midpoint is not complete");
+
+            presentation.Advance(0.125);
+            Test.True(!presentation.Active, "hero bolt completes at 0.25 seconds");
+            Test.Equal(1f, presentation.Progress);
+            Test.True(presentation.CompletedThisFrame, "completion is reported on the finishing frame");
+        });
+
+        Test.Run("enemy_beam_completes_after_four_tenths_second", () =>
+        {
+            var presentation = new RangedAttackPresentationState();
+            presentation.Start(Team.Enemy, 5);
+
+            presentation.Advance(0.2);
+            Test.True(presentation.Active, "enemy beam remains active at its midpoint");
+            Test.Equal(0.5f, presentation.Progress);
+
+            presentation.Advance(0.2);
+            Test.True(!presentation.Active, "enemy beam completes at 0.4 seconds");
+            Test.True(presentation.CompletedThisFrame, "beam completion is reported");
+        });
+
+        Test.Run("ranged_effect_large_delta_completes_only_once", () =>
+        {
+            var presentation = new RangedAttackPresentationState();
+            presentation.Start(Team.Player, 3);
+
+            presentation.Advance(1.0);
+            Test.True(!presentation.Active, "large delta completes the effect");
+            Test.True(presentation.CompletedThisFrame, "large delta reports completion");
+            Test.Equal(1f, presentation.ImpactProgress);
+
+            presentation.Advance(1.0);
+            Test.True(!presentation.CompletedThisFrame, "completion is not repeated");
+        });
+
+        Test.Run("ranged_effect_preserves_preimpact_health", () =>
+        {
+            var presentation = new RangedAttackPresentationState();
+            presentation.Prepare(Team.Enemy, 4);
+
+            Test.Equal(16, presentation.DisplayedTargetHp(16, 9));
+            Test.True(presentation.Pending, "prepared effect remains pending during movement");
+            Test.True(presentation.Active, "prepared effect preserves the target during movement");
+            Test.True(presentation.BlocksGameplayInput, "pending combat blocks commands");
+            Test.True(presentation.DefersBattleResult, "pending combat defers result UI");
+
+            presentation.Activate();
+            presentation.Advance(0.32);
+            Test.True(presentation.ImpactStartedThisFrame, "impact starts at eighty percent");
+            Test.Equal(9, presentation.DisplayedTargetHp(16, 9));
+
+            presentation.Advance(0.4);
+            Test.Equal(9, presentation.DisplayedTargetHp(16, 9));
+            Test.True(presentation.Pending, "portrait presentation remains pending after impact");
+            Test.True(presentation.BlocksGameplayInput, "portrait still blocks commands");
+
+            presentation.CompletePresentation();
+            Test.True(!presentation.Pending, "dismissal completes the presentation");
+            Test.True(!presentation.BlocksGameplayInput, "commands resume after dismissal");
+            Test.True(!presentation.DefersBattleResult, "result UI may appear after dismissal");
+        });
+
+        Test.Run("enemy_turn_pacing_waits_then_previews", () =>
+        {
+            var pacing = new EnemyTurnPacingState();
+            pacing.BeginIntermission();
+
+            pacing.Advance(0.99);
+            Test.Equal(EnemyTurnPacingPhase.Intermission, pacing.Phase);
+            Test.True(!pacing.PreviewStartedThisFrame, "preview does not start before one second");
+
+            pacing.Advance(0.01);
+            Test.Equal(EnemyTurnPacingPhase.Preview, pacing.Phase);
+            Test.True(pacing.PreviewStartedThisFrame, "preview starts at one second");
+            Test.True(!pacing.ActionReadyThisFrame, "enemy remains stationary when preview begins");
+
+            pacing.Advance(0.59);
+            Test.Equal(EnemyTurnPacingPhase.Preview, pacing.Phase);
+            Test.True(!pacing.ActionReadyThisFrame, "preview lasts six tenths of a second");
+
+            pacing.Advance(0.01);
+            Test.Equal(EnemyTurnPacingPhase.Idle, pacing.Phase);
+            Test.True(pacing.ActionReadyThisFrame, "enemy acts after the preview");
+        });
+
+        Test.Run("enemy_turn_pacing_large_delta_preserves_preview_frame", () =>
+        {
+            var pacing = new EnemyTurnPacingState();
+            pacing.BeginIntermission();
+
+            pacing.Advance(4.0);
+
+            Test.Equal(EnemyTurnPacingPhase.Preview, pacing.Phase);
+            Test.True(pacing.PreviewStartedThisFrame, "large delta still begins a preview");
+            Test.True(!pacing.ActionReadyThisFrame, "large delta cannot skip the preview frame");
+        });
+
+        Test.Run("enemy_turn_pacing_skips_dead_queued_enemies", () =>
+        {
+            var battle = new BattleState(1);
+            var enemies = new Queue<Unit>(battle.Units.Where(u => u.Team == Team.Enemy));
+            enemies.Peek().Hp = 0;
+
+            var next = EnemyTurnPacingState.TakeNextLiving(enemies);
+
+            Test.True(next != null && next.Alive, "the next living enemy is selected");
+            while (enemies.TryDequeue(out var remaining)) remaining.Hp = 0;
+            var deadOnly = new Queue<Unit>(battle.Units.Where(u => u.Team == Team.Enemy));
+            foreach (var enemy in deadOnly) enemy.Hp = 0;
+            Test.True(EnemyTurnPacingState.TakeNextLiving(deadOnly) == null, "dead-only queue has no preview target");
+            Test.Equal(0, deadOnly.Count);
         });
 
         Test.Run("tutorial_dismissal_preserves_active_lesson", () =>
