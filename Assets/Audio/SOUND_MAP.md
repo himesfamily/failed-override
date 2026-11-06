@@ -1,6 +1,6 @@
 # Failed Override Audio Set
 
-These sounds were created specifically for the Failed Override prototype. They are original procedural audio and may be used, changed, and distributed with the game.
+Most sounds were created specifically for the Failed Override prototype. Third-party tracks and effects are recorded below with their source and license.
 
 ## Music bus
 
@@ -37,6 +37,7 @@ The version 2 themes are stereo, 16-bit PCM WAV at 32,000 Hz. The remaining file
 
 - `landing_theme_selected.mp3`: “Musical Guitar Party – 122 BPM,” downloaded from [Pixabay asset 84456](https://pixabay.com/sound-effects/musical-guitar-party-122-bpm-84456/) by Trent Himes on September 9, 2026 under the Pixabay Content License. Creator name still to be recorded.
 - `battle_theme_selected.mp3`: “Ultimatum – 120 BPM Orchestra Loop,” downloaded from [Pixabay asset 325053](https://pixabay.com/sound-effects/musical-ultimatum-120bpm-orchestra-loop-325053/) by Trent Himes on September 9, 2026 under the Pixabay Content License. Creator name still to be recorded.
+- `bear_growl_transform.wav`: opening growl trimmed from “Sound of Growling Bear HD” by MIGHTUSER, downloaded from [Pixabay asset 263159](https://pixabay.com/sound-effects/nature-sound-of-growling-bear-hd-263159/) by Trent Himes and edited on November 2, 2026 under the Pixabay Content License. The game copy keeps the first 2.24 seconds and applies a short fade-out.
 
 Pixabay does not require attribution, but retaining this information provides a useful license record.
 
@@ -47,7 +48,7 @@ Pixabay does not require attribution, but retaining this information provides a 
 - License code: D7UABDARQDZTGXJH
 - Artist: Roman Senyk
 
-- `bear_growl_transform.wav` — sustained bear growl used when Nance changes form.
+- `bear_growl_transform.wav` — MIGHTUSER bear growl from Pixabay, trimmed and faded for Nance’s transformation.
 - `bear_growl_claw.wav`, `bear_growl_maul.wav` — short bear snarls layered with the force of Nance’s melee attacks.
 
 - `issac_scream.wav` — Issac cries out when the cargo scanner triggers the hidden defenses.

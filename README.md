@@ -79,7 +79,7 @@ The landing screen now uses a cinematic Selene outpost battle illustration featu
 
 All enemy classes now have illustrated board tokens: corrupted security droid, corrupted heavy droid, Ompok proxy, Vaur brute, Khelt stalker, and Synaptic engineer. Reprogrammed enemy droids retain their recognizable machine artwork while gaining player readiness rings.
 
-Each mission now has a distinct illustrated battlefield underlay: Selene research laboratory, industrial evacuation deck, and the crew's freight-ship interior. The disruption console, evacuation shuttle, and bridge nexus are illustrated objects rather than letter markers. Semi-transparent grid shading preserves walls, movement highlights, attack ranges, and tactical readability.
+Each mission now has a distinct illustrated battlefield underlay: Selene research laboratory, industrial security deck, and the crew's freight-ship interior. The disruption console, security-center passage, and bridge nexus are clearly marked objects rather than letter markers. Semi-transparent grid shading preserves walls, movement highlights, attack ranges, and tactical readability.
 
 ## Version 2.2 local playtest feedback
 

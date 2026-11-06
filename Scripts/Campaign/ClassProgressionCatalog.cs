@@ -1,0 +1,17 @@
+namespace FailedOverride.Campaign;
+
+public sealed record ClassProgressionDefinition(string Id,string Name,int Tier,string? Prerequisite,string Description);
+
+public static class ClassProgressionCatalog
+{
+    static ClassProgressionDefinition D(string id,string name,int tier,string? prerequisite,string description)=>new(id,name,tier,prerequisite,description);
+    static readonly Dictionary<string,ClassProgressionDefinition[]> Entries=new()
+    {
+        ["xander"]=[D("xander-marksman-1","Marksman I",1,null,"Plasma pistol range: 3 → 4."),D("xander-marksman-2","Marksman II",2,"xander-marksman-1","Low cover penalty: -1 Attack → 0."),D("xander-vanguard-1","Vanguard I",1,null,"Vibro-axe power: 8 → 10."),D("xander-vanguard-2","Vanguard II",2,"xander-vanguard-1","A Vibro-axe defeat restores Xander's Movement action."),D("xander-recon-1","Recon Specialist I",1,null,"Moving reveals hidden enemies within 3 spaces."),D("xander-recon-2","Recon Specialist II",2,"xander-recon-1","Enemies revealed by Xander lose 1 Armor against his attacks.")],
+        ["nance"]=[D("nance-iron-1","Iron Bear I",1,null,"Bear Armor: +2 → +3."),D("nance-iron-2","Iron Bear II",2,"nance-iron-1","Recover 3 Health at each player phase."),D("nance-guardian-1","Guardian Bear I",1,null,"Adjacent allies gain +1 Armor."),D("nance-guardian-2","Guardian Bear II",2,"nance-guardian-1","Once per round, Nance intercepts one attack on an adjacent ally."),D("nance-fury-1","Primal Fury I",1,null,"Bear claws power: 9 → 11."),D("nance-fury-2","Primal Fury II",2,"nance-fury-1","A Bear claws defeat restores Nance's Movement action.")],
+        ["akiko"]=[D("akiko-hardened-1","Hardened Robots I",1,null,"Robot Health: 10 → 14; Armor: 1 → 2."),D("akiko-hardened-2","Hardened Robots II",2,"akiko-hardened-1","Active robot limit: 3 → 4."),D("akiko-combat-1","Combat Protocols I",1,null,"Robot laser power: 4 → 6."),D("akiko-combat-2","Combat Protocols II",2,"akiko-combat-1","New robots can move and act immediately."),D("akiko-engineer-1","Field Engineer I",1,null,"Repair range: 1 → 2."),D("akiko-engineer-2","Field Engineer II",2,"akiko-engineer-1","Repair: 6 → 9 Health and remove stun.")],
+        ["issac"]=[D("issac-override-1","Override Specialist I",1,null,"Reprogram threshold: 50% → 75% Health."),D("issac-override-2","Override Specialist II",2,"issac-override-1","Newly reprogrammed droids can move and act immediately."),D("issac-mechanic-1","Master Mechanic I",1,null,"Repair: 6 → 9 Health."),D("issac-mechanic-2","Master Mechanic II",2,"issac-mechanic-1","Repair also removes stun."),D("issac-command-1","Command Protocols I",1,null,"Reprogrammed droids gain +1 Armor."),D("issac-command-2","Command Protocols II",2,"issac-command-1","Reprogrammed droids gain +2 Attack damage.")],
+        ["chrandy"]=[D("chrandy-trauma-1","Trauma Specialist I",1,null,"Field Treatment: 7 → 10 Health."),D("chrandy-trauma-2","Trauma Specialist II",2,"chrandy-trauma-1","Field Treatment also removes stun."),D("chrandy-prepared-1","Prepared Medic I",1,null,"Medical supplies: 3 → 5."),D("chrandy-prepared-2","Prepared Medic II",2,"chrandy-prepared-1","Field Treatment range: 1 → 2."),D("chrandy-anesthetist-1","Combat Anesthetist I",1,null,"Stun pistol range: 3 → 4."),D("chrandy-anesthetist-2","Combat Anesthetist II",2,"chrandy-anesthetist-1","Once per mission, stun one normally immune enemy.")]
+    };
+    public static IReadOnlyList<ClassProgressionDefinition> For(string characterId)=>Entries.GetValueOrDefault(characterId,[]);
+}

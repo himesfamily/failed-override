@@ -37,25 +37,28 @@ public sealed class Unit
     public int Stunned { get; set; }
     public bool SkippedByStun { get; set; }
     public int MedicalSupplies { get; set; }
+    public string? ControllerId { get; set; }
+    public int AttackBonus { get; set; }
+    public HashSet<string> ClassProgressions { get; set; } = [];
 
     public bool Alive => Hp > 0;
     public bool Small => Role is Role.Twin or Role.Dog;
     public bool Hero => Role is Role.Scout or Role.Shapeshifter or Role.Tech or Role.Medic;
     public int MaxHp => BaseHp + (Bear ? 6 : 0);
-    public int Armor => BaseArmor + (Bear ? 2 : 0);
+    public int Armor => BaseArmor + (Bear ? 2 + (ClassProgressions.Contains("nance-iron-1") ? 1 : 0) : 0);
     public int Move => BaseMove - (Bear ? 1 : 0);
 
     public IReadOnlyList<Weapon> Weapons => Role switch
     {
-        Role.Scout => [new("Plasma pistol", 6, 3), new("Vibro-axe", 8, 1)],
-        Role.Shapeshifter when Bear => [new("Bear claws", 9, 1), new("Maul", 7, 1, true)],
+        Role.Scout => [new("Plasma pistol", 6, ClassProgressions.Contains("xander-marksman-1") ? 4 : 3), new("Vibro-axe", 8+(ClassProgressions.Contains("xander-vanguard-1")?2:0), 1)],
+        Role.Shapeshifter when Bear => [new("Bear claws", 9+(ClassProgressions.Contains("nance-fury-1")?2:0), 1), new("Maul", 7, 1, true)],
         Role.Shapeshifter => [new("Pulse palm", 5, 2)],
         Role.Tech => [new("Arc tool", 5, 2)],
-        Role.Robot => [new("Robot laser", 4, 2)],
+        Role.Robot => [new("Robot laser", 4+(ClassProgressions.Contains("akiko-combat-1")?2:0), 2)],
         Role.Droid => [new("Stun ray", 4, 3, true), new("Saw-blade arm", 6, 1)],
         Role.HeavyDroid => [new("Heavy cannon", 8, 2), new("Crushing arm", 7, 1)],
         Role.Officer => [new("Officer pistol", 4, 3)],
-        Role.Medic => [new("Stun pistol", 0, 3, true, true)],
+        Role.Medic => [new("Stun pistol", 0, ClassProgressions.Contains("chrandy-anesthetist-1")?4:3, true, true)],
         Role.OmpokProxy => [new("Neural cannon", 8, 3), new("Crushing limb", 10, 1)],
         Role.VaurBrute => [new("Shock club", 7, 1)],
         Role.KheltStalker => [new("Needle caster", 5, 2)],
