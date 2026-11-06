@@ -11,12 +11,12 @@ public sealed class MissionDefinition
     public IReadOnlyList<UnitSpawn> Spawns { get; }
     public string[] UnitRows { get; }
     public Cell? Console { get; }
-    public Cell? Shuttle { get; }
+    public Cell? SecurityPassage { get; }
     public Cell? Bridge { get; }
 
-    MissionDefinition(int number, string[] terrainRows, string[] unitRows, Cell? console = null, Cell? shuttle = null, Cell? bridge = null)
+    MissionDefinition(int number, string[] terrainRows, string[] unitRows, Cell? console = null, Cell? securityPassage = null, Cell? bridge = null)
     {
-        Number = number; UnitRows = unitRows; Console = console; Shuttle = shuttle; Bridge = bridge;
+        Number = number; UnitRows = unitRows; Console = console; SecurityPassage = securityPassage; Bridge = bridge;
         if (terrainRows.Length != 12 || terrainRows.Any(row => row.Length != 12)) throw new ArgumentException("Mission terrain must be 12x12.");
         if (unitRows.Length != 12 || unitRows.Any(row => row.Length != 12)) throw new ArgumentException("Mission spawns must be 12x12.");
         Terrain = new TerrainCell[12, 12];
@@ -43,7 +43,7 @@ public sealed class MissionDefinition
         ["............",".....I.D....","............",".....D......","............","............","............",".....D......","............","............",".XNA........","............"], console: new(6,4)),
         2 => new(2,
         ["############","#.........O#","#..PP......#","#....^.....#","#.cc##.ccc.#","#......#...#","#P^.##.#.#.#","#...#......#","#c#.#.###..#","#..........#","#..........#","############"],
-        ["............","............","............","...D.H......","............","............","............",".......D....","............",".XNAI.......","............","............"], shuttle: new(10,1)),
+        ["............","............","............","...D.H......","............","............","............",".......D....","............",".XNAI.......","............","............"], securityPassage: new(10,1)),
         3 => new(3,
         ["############","#........O.#","#..^..#....#","#..c..#....#","#.....###..#","#..........#","#.cc##.cc#.#","#..........#","#..^.......#","#..........#","#..........#","############"],
         ["............","............","............","........K...",".M..........",".......Y....","............",".V..........",".......XNAI.",".....C......","............","............"], bridge: new(9,1)),

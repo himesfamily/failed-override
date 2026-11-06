@@ -10,9 +10,15 @@
     <Compile Include="Program.cs" />
     <Compile Include="../Scripts/Battle/*.cs" />
     <Compile Include="../Scripts/Campaign/CampaignState.cs" />
+    <Compile Include="../Scripts/Campaign/CharacterProgression.cs" />
+    <Compile Include="../Scripts/Campaign/ClassProgressionCatalog.cs" />
     <Compile Include="../Scripts/Units/Unit.cs" />
     <Compile Include="../Scripts/UI/RangedAttackPresentationState.cs" />
     <Compile Include="../Scripts/UI/EnemyTurnPacingState.cs" />
     <Compile Include="../Scripts/UI/TutorialPresentationState.cs" />
+    <Compile Include="../Scripts/UI/ProgressionPresentationState.cs" />
+    <Compile Include="../Scripts/UI/CrewPreparationState.cs" />
+    <Compile Include="../Scripts/UI/CrewPreparationPresentation.cs" />
+    <Compile Include="../Scripts/UI/MissionTwoIntroScript.cs" />
   </ItemGroup>
 </Project>
