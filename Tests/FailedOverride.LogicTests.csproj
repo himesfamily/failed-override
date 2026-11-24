@@ -10,6 +10,10 @@
     <Compile Include="Program.cs" />
     <Compile Include="../Scripts/Battle/*.cs" />
     <Compile Include="../Scripts/Campaign/CampaignState.cs" />
+    <Compile Include="../Scripts/Campaign/MissionRunMode.cs" />
+    <Compile Include="../Scripts/Campaign/TrainingSimulationPolicy.cs" />
+    <Compile Include="../Scripts/Campaign/MissionProgressionTransaction.cs" />
+    <Compile Include="../Scripts/Campaign/CrewCatalog.cs" />
     <Compile Include="../Scripts/Campaign/CharacterProgression.cs" />
     <Compile Include="../Scripts/Campaign/ClassProgressionCatalog.cs" />
     <Compile Include="../Scripts/Units/Unit.cs" />
@@ -19,6 +23,20 @@
     <Compile Include="../Scripts/UI/ProgressionPresentationState.cs" />
     <Compile Include="../Scripts/UI/CrewPreparationState.cs" />
     <Compile Include="../Scripts/UI/CrewPreparationPresentation.cs" />
+    <Compile Include="../Scripts/UI/CrewSelectionState.cs" />
+    <Compile Include="../Scripts/UI/CrewSelectionPresentation.cs" />
+    <Compile Include="../Scripts/UI/MissionLaunchFlowState.cs" />
+    <Compile Include="../Scripts/UI/TrainingMissionSelectionState.cs" />
+    <Compile Include="../Scripts/UI/TrainingMissionSelectionPresentation.cs" />
+    <Compile Include="../Scripts/UI/PostMissionNavigationState.cs" />
+    <Compile Include="../Scripts/UI/MissionRunPresentation.cs" />
     <Compile Include="../Scripts/UI/MissionTwoIntroScript.cs" />
+    <Compile Include="../Scripts/UI/MissionTwoWrapUpScript.cs" />
+    <Compile Include="../Scripts/UI/MissionThreeIntroScript.cs" />
+    <Compile Include="../Scripts/UI/OpeningCinematicAudio.cs" />
+    <Compile Include="../Scripts/UI/BriefingSpeakerFocusLayout.cs" />
+    <Compile Include="../Scripts/UI/BriefingSpeakerPortraitLayout.cs" />
+    <Compile Include="../Scripts/UI/BriefingSpeakerFocusTransitionState.cs" />
+    <Compile Include="../Scripts/UI/BriefingSpeakerPortraitTransitionState.cs" />
   </ItemGroup>
 </Project>

@@ -3,7 +3,7 @@ namespace FailedOverride.Units;
 public enum Team { Player, Enemy, Civilian }
 public enum Role
 {
-    Scout, Shapeshifter, Tech, Robot, Droid, HeavyDroid, Officer, Medic,
+    Scout, Shapeshifter, Tech, Robot, Droid, HeavyDroid, Officer, Medic, Captain,
     Twin, Dog, OmpokProxy, VaurBrute, KheltStalker, SynapticEngineer
 }
 
@@ -42,11 +42,17 @@ public sealed class Unit
     public HashSet<string> ClassProgressions { get; set; } = [];
 
     public bool Alive => Hp > 0;
+    public bool Machine => IsMachineRole(Role);
     public bool Small => Role is Role.Twin or Role.Dog;
     public bool Hero => Role is Role.Scout or Role.Shapeshifter or Role.Tech or Role.Medic;
+    public bool NamedCrew => Role is Role.Scout or Role.Shapeshifter or Role.Tech or Role.Officer or Role.Medic or Role.Captain;
     public int MaxHp => BaseHp + (Bear ? 6 : 0);
     public int Armor => BaseArmor + (Bear ? 2 + (ClassProgressions.Contains("nance-iron-1") ? 1 : 0) : 0);
     public int Move => BaseMove - (Bear ? 1 : 0);
+
+    public static bool IsMachineRole(Role role) => role is
+        Role.Robot or Role.Droid or Role.HeavyDroid or Role.OmpokProxy or
+        Role.VaurBrute or Role.KheltStalker or Role.SynapticEngineer;
 
     public IReadOnlyList<Weapon> Weapons => Role switch
     {
@@ -59,6 +65,7 @@ public sealed class Unit
         Role.HeavyDroid => [new("Heavy cannon", 8, 2), new("Crushing arm", 7, 1)],
         Role.Officer => [new("Officer pistol", 4, 3)],
         Role.Medic => [new("Stun pistol", 0, ClassProgressions.Contains("chrandy-anesthetist-1")?4:3, true, true)],
+        Role.Captain => [new("Pulse rifle", 8, ClassProgressions.Contains("jeane-sharpshooter-1") ? 5 : 4), new("Officer's blade", ClassProgressions.Contains("jeane-duelist-1") ? 12 : 10, 1)],
         Role.OmpokProxy => [new("Neural cannon", 8, 3), new("Crushing limb", 10, 1)],
         Role.VaurBrute => [new("Shock club", 7, 1)],
         Role.KheltStalker => [new("Needle caster", 5, 2)],

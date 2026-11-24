@@ -32,6 +32,59 @@ static class Program
 {
     public static int Main()
     {
+        Test.Run("crew_catalog_has_all_playable_profiles_and_canonical_names", () =>
+        {
+            var missionThree = CrewCatalog.AvailableIds(3);
+            Test.Equal(6, missionThree.Count);
+            Test.Equal(6, missionThree.Distinct(StringComparer.Ordinal).Count());
+            Test.True(new[] { "xander", "nance", "akiko", "issac", "chrandy", "jeane" }.All(missionThree.Contains), "Mission 3 exposes the complete named crew");
+
+            var captain = CrewCatalog.Profile("jeane");
+            Test.Equal("Captain Jeane Gershon", captain.Name);
+            Test.Equal("Captain", captain.ClassName);
+            Test.Equal(Role.Captain, captain.Role);
+            Test.Equal(24, captain.Health);
+            Test.Equal(2, captain.Armor);
+            Test.Equal(6, captain.Movement);
+            Test.Equal("Dr. Chandry Perra", CrewCatalog.Profile("chrandy").Name);
+        });
+
+        Test.Run("named_crew_excludes_controlled_machines", () =>
+        {
+            foreach (var id in CrewCatalog.AvailableIds(3))
+            {
+                var profile = CrewCatalog.Profile(id);
+                var unit = new Unit { Id = id, Name = profile.Name, Token = profile.Token, Role = profile.Role, Team = Team.Player };
+                Test.True(unit.NamedCrew, $"{id} is a named crew member");
+            }
+
+            var robot = new Unit { Id = "robot-1", Name = "Support robot", Token = "R", Role = Role.Robot, Team = Team.Player, ControllerId = "akiko" };
+            var droid = new Unit { Id = "droid-1", Name = "Reprogrammed droid", Token = "D", Role = Role.Droid, Team = Team.Player, ControllerId = "issac" };
+            Test.True(!robot.NamedCrew, "summoned robots are not named crew");
+            Test.True(!droid.NamedCrew, "reprogrammed robots are not named crew");
+        });
+
+        Test.Run("mission_two_wrap_up_hands_off_to_ompok", () =>
+        {
+            var beats = MissionTwoWrapUpScript.Beats;
+            Test.Equal(5, beats.Count);
+            Test.Equal("CAPTAIN JEANE GERSHON", beats[0].Speaker);
+            Test.True(beats.Any(b => b.Dialogue.Contains("infected our ship's AI")), "Issac explains the intrusion");
+            Test.Equal("EMPEROR OMPOK", beats[^1].Speaker);
+            Test.True(beats[^1].Dialogue.Contains("Issac"), "canonical Issac spelling");
+            Test.True(!string.Join(" ", beats.Select(b => b.Speaker + b.Dialogue)).Contains("GERSON"), "legacy Gerson spelling is absent");
+        });
+
+        Test.Run("mission_three_intro_ends_in_cargo_bay", () =>
+        {
+            var beats = MissionThreeIntroScript.Beats;
+            Test.True(beats.Count >= 7, "long Ompok speech is split into readable beats");
+            Test.Equal("EMPEROR OMPOK", beats[0].Speaker);
+            Test.True(beats.Any(b => b.Dialogue.Contains("KILL ALL HUMANS")), "Ompok declares the attack");
+            Test.True(beats.Any(b => b.Speaker == "CAPTAIN JEANE GERSHON"), "canonical captain spelling");
+            Test.Equal("STARSHIP AURORA\nCARGO BAY", MissionThreeIntroScript.TransitionTitle);
+        });
+
         Test.Run("mission_two_intro_preserves_the_approved_cast_and_story", () =>
         {
             var beats = MissionTwoIntroScript.Beats;
@@ -45,12 +98,219 @@ static class Program
             var allText = string.Join(" ", beats.Select(b => $"{b.Speaker} {b.Portrait} {b.Dialogue}"));
             Test.True(!allText.Contains("Tiger", StringComparison.OrdinalIgnoreCase), "Tiger remains unrevealed");
             Test.True(!allText.Contains("twin", StringComparison.OrdinalIgnoreCase), "the twins remain unrevealed");
-            Test.True(!allText.Contains("Chrandy", StringComparison.OrdinalIgnoreCase), "Chrandy remains a silent visual cameo");
+            Test.True(!allText.Contains("Chrandy", StringComparison.OrdinalIgnoreCase), "legacy Chandry spelling is absent from player-facing text");
             Test.Equal("INTRUSION ALERT", MissionTwoIntroScript.TransitionKicker);
             Test.Equal("STARSHIP AURORA\nCARGO BAY", MissionTwoIntroScript.TransitionTitle);
             Test.True(MissionTwoIntroScript.PreserveFullComposition, "the wide room keeps Issac and Chrandy visible at opposite edges");
+            Test.True(MissionTwoIntroScript.ShowForegroundPortrait, "the active speaker is drawn forward over the room cast");
+            Test.Equal(BriefingSpeakerFocusLayout.BackgroundFrame.X, MissionTwoIntroScript.BackgroundFrame.X);
+            Test.Equal(BriefingSpeakerFocusLayout.BackgroundFrame.Y, MissionTwoIntroScript.BackgroundFrame.Y);
+            Test.Equal(BriefingSpeakerFocusLayout.BackgroundFrame.Width, MissionTwoIntroScript.BackgroundFrame.Width);
+            Test.Equal(BriefingSpeakerFocusLayout.BackgroundFrame.Height, MissionTwoIntroScript.BackgroundFrame.Height);
+            Test.True(MissionTwoIntroScript.BackgroundFrame.Height < 900f, "the full wide background is letterboxed instead of cropped");
             Test.True(!MissionTwoIntroScript.ForegroundPortrait.Intersects(MissionTwoIntroScript.IssacFaceRegion), "speaker portrait leaves room Issac visible");
             Test.True(!MissionTwoIntroScript.ForegroundPortrait.Intersects(MissionTwoIntroScript.ChrandyFaceRegion), "speaker portrait leaves room Chrandy visible");
+        });
+
+        Test.Run("mission_one_attack_beat_uses_the_supplied_issac_scream", () =>
+        {
+            Test.Equal("res://Assets/Audio/SFX/issac_scream_wilhelm.mp3", OpeningCinematicAudio.IssacScreamResource);
+            Test.True(OpeningCinematicAudio.ShouldPlayIssacScream("SYSTEM", "Issac screams—and the cargo bay falls silent."), "the attack narration triggers Issac's scream");
+            Test.True(!OpeningCinematicAudio.ShouldPlayIssacScream("ISSAC WYNTER", "We have to carry it."), "ordinary Issac dialogue does not replay the scream");
+        });
+
+        Test.Run("briefing_speaker_focus_maps_every_scripted_group_speaker", () =>
+        {
+            var portraitKeys = MissionTwoIntroScript.Beats
+                .Concat(MissionTwoWrapUpScript.Beats)
+                .Concat(MissionThreeIntroScript.Beats)
+                .Select(beat => beat.Portrait)
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            var unmapped = portraitKeys
+                .Where(key => !BriefingSpeakerFocusLayout.IsHologram(key) && BriefingSpeakerFocusLayout.MarkerFor(key) is null)
+                .ToList();
+
+            Test.Equal(0, unmapped.Count);
+            Test.True(BriefingSpeakerFocusLayout.IsHologram("ompok"), "Ompok uses hologram focus");
+            Test.Equal<MissionTwoIntroRect?>(null, BriefingSpeakerFocusLayout.MarkerFor("ompok"));
+            Test.Equal<MissionTwoIntroRect?>(null, BriefingSpeakerFocusLayout.MarkerFor("unknown"));
+        });
+
+        Test.Run("briefing_speaker_focus_preserves_safe_wide_frame", () =>
+        {
+            var frame = BriefingSpeakerFocusLayout.BackgroundFrame;
+            Test.Equal(24f, frame.X);
+            Test.Equal(82f, frame.Y);
+            Test.Equal(1352f, frame.Width);
+            Test.Equal(761f, frame.Height);
+            Test.True(frame.X >= 24f && frame.X + frame.Width <= 1376f, "room art keeps horizontal safe margins");
+            Test.True(Math.Abs(frame.Width / frame.Height - 1672f / 941f) < .01f, "room art preserves the approved wide composition");
+        });
+
+        Test.Run("briefing_speaker_focus_named_regions_match_the_room_cast", () =>
+        {
+            var issac = BriefingSpeakerFocusLayout.MarkerFor("issac");
+            var jeane = BriefingSpeakerFocusLayout.MarkerFor("jeane");
+            var xander = BriefingSpeakerFocusLayout.MarkerFor("xander");
+            var nance = BriefingSpeakerFocusLayout.MarkerFor("nance");
+
+            Test.True(issac is not null && jeane is not null && xander is not null && nance is not null, "every outlined crew member has a named room region");
+            Test.True(issac!.Value.X < jeane!.Value.X, "Issac is the leftmost outlined speaker");
+            Test.True(jeane.Value.X < xander!.Value.X, "Captain Gershon is the gray-haired captain second from the left");
+            Test.True(xander.Value.X < nance!.Value.X, "Nance is the red-jacketed woman to Xander's right");
+            Test.True(!issac.Value.Intersects(jeane.Value), "Issac and Jeane markers do not overlap");
+            Test.True(!jeane.Value.Intersects(xander.Value), "Jeane and Xander markers do not overlap");
+            Test.True(!xander.Value.Intersects(nance.Value), "Xander and Nance markers do not overlap");
+            Test.Equal("res://Assets/Cinematic/SpeakerFocus/ompok-outline.svg", BriefingSpeakerFocusLayout.HologramOutlineResource);
+            Test.True(BriefingSpeakerFocusLayout.FocusZIndex > 0, "speaker markers draw above the briefing artwork and Ompok hologram");
+
+            var displayed = BriefingSpeakerFocusLayout.DisplayMarkerFor("xander");
+            var frame = BriefingSpeakerFocusLayout.BackgroundFrame;
+            Test.True(displayed is not null, "Xander marker converts to display coordinates");
+            Test.True(displayed!.Value.X >= frame.X && displayed.Value.X + displayed.Value.Width <= frame.X + frame.Width, "display marker stays inside the letterboxed artwork");
+            Test.True(Math.Abs(displayed.Value.Width / xander.Value.Width - frame.Width / 1672f) < .001f, "marker uses the same scale as the artwork");
+
+            var hairlines = new Dictionary<string, float>
+            {
+                ["issac"] = 244f,
+                ["jeane"] = 161f,
+                ["xander"] = 147f,
+                ["nance"] = 185f,
+            };
+            foreach (var (speakerKey, hairlineY) in hairlines)
+            {
+                var marker = BriefingSpeakerFocusLayout.MarkerFor(speakerKey)!.Value;
+                var haloTop = marker.Y + marker.Height * BriefingSpeakerFocusLayout.MarkerHaloTopFraction;
+                Test.True(haloTop <= hairlineY, $"{speakerKey} halo starts above the hairline");
+            }
+        });
+
+        Test.Run("briefing_speaker_focus_switches_without_stale_or_duplicate_layers", () =>
+        {
+            var state = new BriefingSpeakerFocusTransitionState();
+
+            var first = state.Select("jeane");
+            Test.Equal<string?>(null, first.PreviousGroupKey);
+            Test.Equal("jeane", first.CurrentGroupKey);
+            Test.True(!first.HologramFocused, "crew focus is not a hologram");
+            Test.True(state.LayerVisible(first.CurrentLayer!.Value), "the selected crew layer is visible");
+
+            var repeated = state.Select("jeane");
+            Test.Equal<string?>(null, repeated.PreviousGroupKey);
+            Test.Equal("jeane", repeated.CurrentGroupKey);
+            Test.True(repeated.ReusesCurrentLayer, "an uninterrupted repeated speaker may reuse the current texture");
+
+            var switched = state.Select("issac");
+            Test.Equal("jeane", switched.PreviousGroupKey);
+            Test.Equal("issac", switched.CurrentGroupKey);
+            Test.True(state.LayerVisible(switched.PreviousLayer!.Value), "the previous layer remains visible only for the crossfade");
+            Test.True(state.LayerVisible(switched.CurrentLayer!.Value), "the incoming layer is visible for the crossfade");
+
+            var hologram = state.Select("ompok");
+            Test.Equal("issac", hologram.PreviousGroupKey);
+            Test.Equal<string?>(null, hologram.CurrentGroupKey);
+            Test.True(hologram.HologramFocused, "Ompok uses hologram focus");
+            Test.True(hologram.ClearGroupImmediately, "Ompok clears crew focus synchronously");
+            Test.True(!state.LayerVisible(0) && !state.LayerVisible(1), "rapid Ompok interruption cannot leave a stale crew outline");
+
+            var unknown = state.Select("unknown");
+            Test.Equal<string?>(null, unknown.PreviousGroupKey);
+            Test.Equal<string?>(null, unknown.CurrentGroupKey);
+            Test.True(!unknown.HologramFocused, "unknown speakers clear hologram focus");
+            Test.True(unknown.ClearGroupImmediately, "unknown speakers synchronously clear both group layers");
+
+            var rapidFirst = state.Select("jeane");
+            var rapidSecond = state.Select("issac");
+            var repeatedDuringFade = state.Select("issac");
+            Test.True(state.LayerVisible(repeatedDuringFade.CurrentLayer!.Value), "repeated rapid input keeps the active layer visible");
+            Test.True(!state.LayerVisible(1 - repeatedDuringFade.CurrentLayer.Value), "repeated rapid input settles the inactive layer immediately");
+            state.Complete(rapidSecond);
+            Test.True(state.LayerVisible(repeatedDuringFade.CurrentLayer.Value), "a stale tween completion cannot hide the current speaker");
+
+            state.Select("jeane");
+            state.Clear();
+            Test.Equal<string?>(null, state.CurrentGroupKey);
+            Test.True(!state.HologramFocused, "clear removes every focus target");
+            var replayed = state.Select("issac");
+            Test.True(!replayed.ReusesCurrentLayer, "replaying a cinematic reloads Issac's texture instead of reusing a stale Nance layer");
+        });
+
+        Test.Run("briefing_portrait_catalog_covers_every_scripted_human_speaker", () =>
+        {
+            var keys = MissionTwoIntroScript.Beats.Concat(MissionTwoWrapUpScript.Beats).Concat(MissionThreeIntroScript.Beats)
+                .Select(beat => beat.Portrait).Where(key => key != "ompok").Distinct().ToList();
+            foreach (var key in keys)
+            {
+                var portrait = BriefingSpeakerPortraitLayout.For(key);
+                Test.True(portrait is not null, $"{key} has a portrait mapping");
+                Test.True(portrait!.Resource.StartsWith("res://Assets/Portraits/"), $"{key} uses a portrait resource");
+                Test.True(File.Exists(portrait.Resource[6..]), $"{key} portrait exists on disk");
+                Test.True(portrait.Side is SpeakerPortraitSide.Left or SpeakerPortraitSide.Right, $"{key} has a side");
+            }
+            Test.True(keys.All(BriefingSpeakerPortraitLayout.AllHumanKeys.Contains), "catalog exposes every scripted human key");
+        });
+
+        Test.Run("briefing_portrait_frames_stay_inside_scene_above_dialogue", () =>
+        {
+            var background = BriefingSpeakerFocusLayout.BackgroundFrame;
+            foreach (var key in BriefingSpeakerPortraitLayout.AllHumanKeys)
+            {
+                var frame = BriefingSpeakerPortraitLayout.DisplayFrameFor(key);
+                Test.True(frame is not null, $"{key} has a display frame");
+                Test.True(frame!.Value.X >= background.X && frame.Value.Y >= background.Y, $"{key} starts inside scene");
+                Test.True(frame.Value.X + frame.Value.Width <= background.X + background.Width, $"{key} ends inside scene width");
+                Test.True(frame.Value.Y + frame.Value.Height <= 730, $"{key} remains above dialogue");
+            }
+        });
+
+        Test.Run("briefing_portrait_transitions_reuse_and_crossfade_cleanly", () =>
+        {
+            var state = new BriefingSpeakerPortraitTransitionState();
+            var first = state.Select("issac");
+            Test.Equal("issac", first.CurrentKey!);
+            Test.True(first.CurrentLayer is not null && !first.ReusesCurrentLayer, "first portrait selects a layer");
+            state.Complete(first);
+            var repeated = state.Select("issac");
+            Test.True(repeated.ReusesCurrentLayer, "repeated speaker reuses portrait without flashing");
+            var changed = state.Select("jeane");
+            Test.Equal("issac", changed.PreviousKey!);
+            Test.Equal("jeane", changed.CurrentKey!);
+            Test.True(changed.PreviousLayer != changed.CurrentLayer, "speaker change crossfades between layers");
+            state.Complete(changed);
+            Test.Equal(1, Enumerable.Range(0, 2).Count(state.LayerVisible));
+        });
+
+        Test.Run("briefing_portrait_transitions_settle_rapid_changes", () =>
+        {
+            var state = new BriefingSpeakerPortraitTransitionState();
+            state.Select("issac");
+            state.Select("jeane");
+            var rapid = state.Select("xander");
+            state.Complete(rapid);
+            Test.Equal("xander", state.CurrentKey!);
+            Test.Equal(1, Enumerable.Range(0, 2).Count(state.LayerVisible));
+        });
+
+        Test.Run("briefing_portrait_transitions_clear_for_hologram_and_restore_human", () =>
+        {
+            var state = new BriefingSpeakerPortraitTransitionState();
+            state.Select("nance");
+            var hologram = state.Select("ompok");
+            Test.True(hologram.HologramFocused && !state.LayerVisible(0) && !state.LayerVisible(1), "hologram clears human layers");
+            var human = state.Select("akiko");
+            Test.True(!human.HologramFocused && human.CurrentKey == "akiko", "human portrait returns after hologram");
+            state.Clear();
+            Test.True(state.CurrentKey is null && !state.HologramFocused && !state.LayerVisible(0) && !state.LayerVisible(1), "clear removes all focus");
+        });
+
+        Test.Run("later_briefing_scripts_use_supported_portrait_or_hologram_keys", () =>
+        {
+            var beats = MissionTwoIntroScript.Beats.Concat(MissionTwoWrapUpScript.Beats).Concat(MissionThreeIntroScript.Beats).ToList();
+            foreach (var beat in beats)
+                Test.True(BriefingSpeakerFocusLayout.IsHologram(beat.Portrait) || BriefingSpeakerPortraitLayout.For(beat.Portrait) is not null,
+                    $"{beat.Speaker} uses a supported portrait key: {beat.Portrait}");
+            Test.True(beats.GroupBy(beat => beat.Portrait).Any(group => group.Count() > 1), "integration covers repeated speakers");
         });
 
         Test.Run("terrain_kinds_expose_correct_rules", () =>
@@ -277,6 +537,41 @@ static class Program
                 Test.True(battle.Map.All(row => row.Length == 12), $"mission {mission} width");
                 Test.True(battle.Units.Any(unit => unit.Team == Team.Player), $"mission {mission} player spawn");
             }
+        });
+
+        Test.Run("mission_three_accepts_any_four_available_named_crew", () =>
+        {
+            var rosters = new[]
+            {
+                new[] { "xander", "nance", "chrandy", "jeane" },
+                new[] { "nance", "akiko", "issac", "jeane" },
+                new[] { "xander", "akiko", "chrandy", "jeane" },
+            };
+            var definition = MissionDefinition.For(3);
+            Test.Equal(4, definition.PlayerSpawns.Count);
+            Test.Equal(4, definition.PlayerSpawns.Distinct().Count());
+            Test.True(definition.PlayerSpawns.All(cell => definition.At(cell).Walkable), "all player spawn cells are walkable");
+
+            foreach (var roster in rosters)
+            {
+                var battle = new BattleState(3, new CampaignState(), roster);
+                var named = battle.Units.Where(unit => unit.Team == Team.Player && unit.NamedCrew).ToList();
+                Test.Equal(4, named.Count);
+                Test.Equal(string.Join(',', roster), string.Join(',', named.Select(unit => unit.Id)));
+                Test.Equal(string.Join(',', definition.PlayerSpawns), string.Join(',', named.Select(unit => unit.Position)));
+                Test.True(named.Select(unit => unit.Position).Distinct().Count() == 4, "selected crew occupy distinct cells");
+                battle.Evaluate();
+                Test.True(!battle.Finished, "a roster without a particular specialist starts safely");
+            }
+
+            var campaign = new CampaignState();
+            Test.Equal(6, campaign.AvailableCrew(3).Count);
+            Test.True(campaign.ValidateRoster(3, ["xander", "nance", "chrandy", "jeane"]), "four available crew are valid");
+            Test.True(!campaign.ValidateRoster(3, ["xander", "nance", "chrandy"]), "three crew are invalid");
+            Test.True(!campaign.ValidateRoster(3, ["xander", "xander", "chrandy", "jeane"]), "duplicate crew are invalid");
+            Test.True(!campaign.ValidateRoster(3, ["xander", "nance", "chrandy", "ompok"]), "unavailable IDs are invalid");
+            Test.True(campaign.ValidateRoster(1, ["xander", "nance", "akiko"]), "Mission 1 remains fixed");
+            Test.True(campaign.ValidateRoster(2, ["xander", "nance", "akiko", "issac"]), "Mission 2 remains fixed");
         });
 
         Test.Run("any_crew_member_can_enter_mission_two_security_passage", () =>
@@ -534,6 +829,54 @@ static class Program
             Test.Equal(0, robot.Xp);
         });
 
+        Test.Run("every_enemy_role_is_a_reprogrammable_and_repairable_machine", () =>
+        {
+            var battle = new BattleState(3);
+            var issac = battle.Units.Single(u => u.Id == "issac");
+            var akiko = battle.Units.Single(u => u.Id == "akiko");
+            var enemies = battle.Units.Where(u => u.Team == Team.Enemy).ToList();
+            var expectedRoles = new[] { Role.OmpokProxy, Role.VaurBrute, Role.KheltStalker, Role.SynapticEngineer };
+
+            foreach (var role in expectedRoles)
+                Test.True(enemies.Any(u => u.Role == role), $"mission 3 includes {role}");
+
+            foreach (var enemy in enemies)
+            {
+                Test.True(enemy.Machine, $"{enemy.Role} is classified as a machine");
+                issac.Acted = false;
+                issac.Position = new Cell(2, 2);
+                enemy.Position = new Cell(2, 3);
+                enemy.Hp = Math.Max(1, enemy.MaxHp / 2);
+                Test.True(battle.Reprogram(issac, enemy), $"Issac can reprogram damaged {enemy.Role}");
+            }
+
+            Test.Equal(Phase.Victory, battle.Phase);
+
+            var repairBattle = new BattleState(3);
+            var repairIssac = repairBattle.Units.Single(u => u.Id == "issac");
+            var repairAkiko = repairBattle.Units.Single(u => u.Id == "akiko");
+            var converted = repairBattle.Units.First(u => u.Role == Role.VaurBrute);
+            repairIssac.Position = new Cell(5, 4);
+            converted.Position = new Cell(5, 5);
+            converted.Hp = converted.MaxHp / 2;
+            Test.True(repairBattle.Reprogram(repairIssac, converted), "specialized robot converts before repair");
+            converted.Hp = Math.Max(1, converted.MaxHp - 6);
+            converted.Position = new Cell(5, 5);
+            repairAkiko.Position = new Cell(5, 6);
+            repairAkiko.Acted = false;
+            Test.True(repairBattle.Repair(repairAkiko, converted), "Akiko can repair a converted specialized machine");
+
+            var defeatedBattle = new BattleState(3);
+            var defeatedIssac = defeatedBattle.Units.Single(u => u.Id == "issac");
+            var defeatedRobot = defeatedBattle.Units.First(u => u.Role == Role.OmpokProxy);
+            defeatedIssac.Position = new Cell(4, 4);
+            defeatedRobot.Position = new Cell(4, 5);
+            defeatedRobot.Hp = 0;
+            Test.True(!defeatedBattle.CanReprogram(defeatedIssac, defeatedRobot), "defeated robots are not valid reprogram targets");
+            Test.True(!defeatedBattle.Reprogram(defeatedIssac, defeatedRobot), "reprogram refuses defeated robots");
+            Test.True(!defeatedIssac.Acted, "an invalid defeated target does not consume Issac's action");
+        });
+
         Test.Run("experience_awards_queue_until_presented", () =>
         {
             var battle = new BattleState(1);
@@ -571,6 +914,208 @@ static class Program
             Test.True(!campaign.ValidateRoster(3,new[]{"xander","xander","issac","chrandy"}),"duplicates rejected");
         });
 
+        Test.Run("training_simulation_policy_tracks_canonical_unlocks", () =>
+        {
+            var campaign = new CampaignState();
+            Test.Equal("", string.Join(',', TrainingSimulationPolicy.CompletedMissionNumbers(campaign)));
+            Test.Equal("", string.Join(',', TrainingSimulationPolicy.UnlockedCrewIds(campaign)));
+
+            campaign.CompletedMissions.Add("failed-override");
+            Test.Equal("1", string.Join(',', TrainingSimulationPolicy.CompletedMissionNumbers(campaign)));
+            Test.Equal("xander,nance,akiko,issac", string.Join(',', TrainingSimulationPolicy.UnlockedCrewIds(campaign)));
+
+            campaign.CompletedMissions.Add("mission-2");
+            Test.Equal("1,2", string.Join(',', TrainingSimulationPolicy.CompletedMissionNumbers(campaign)));
+            Test.Equal("xander,nance,akiko,issac,chrandy,jeane", string.Join(',', TrainingSimulationPolicy.UnlockedCrewIds(campaign)));
+        });
+
+        Test.Run("training_simulation_policy_rejects_locked_missions_and_invalid_rosters", () =>
+        {
+            var campaign = new CampaignState();
+            campaign.CompletedMissions.Add("failed-override");
+            Test.True(TrainingSimulationPolicy.ValidateMission(campaign, 1), "completed mission is selectable");
+            Test.True(!TrainingSimulationPolicy.ValidateMission(campaign, 2), "incomplete mission is locked");
+            Test.True(TrainingSimulationPolicy.ValidateRoster(campaign, 1, ["xander", "nance", "akiko", "issac"]), "four unlocked crew are valid");
+            Test.True(!TrainingSimulationPolicy.ValidateRoster(campaign, 1, ["xander", "nance", "akiko"]), "simulation requires four crew");
+            Test.True(!TrainingSimulationPolicy.ValidateRoster(campaign, 1, ["xander", "xander", "akiko", "issac"]), "duplicate crew are rejected");
+            Test.True(!TrainingSimulationPolicy.ValidateRoster(campaign, 1, ["xander", "nance", "akiko", "chrandy"]), "locked crew are rejected");
+        });
+
+        Test.Run("training_simulation_launch_always_selects_a_roster", () =>
+        {
+            var campaignFlow = new MissionLaunchFlowState(1, MissionRunMode.Campaign, ["xander", "nance", "akiko"]);
+            Test.Equal(MissionLaunchStage.CrewPreparation, campaignFlow.Stage);
+
+            var simulationFlow = new MissionLaunchFlowState(1, MissionRunMode.TrainingSimulation, ["xander", "nance", "akiko", "issac"]);
+            Test.Equal(MissionRunMode.TrainingSimulation, simulationFlow.Mode);
+            Test.Equal(MissionLaunchStage.RosterSelection, simulationFlow.Stage);
+            Test.True(!simulationFlow.ConfirmRoster(["xander", "nance", "akiko"]), "simulation cannot continue with three crew");
+            Test.True(simulationFlow.ConfirmRoster(["xander", "nance", "akiko", "issac"]), "simulation accepts four crew");
+        });
+
+        Test.Run("training_mission_selector_lists_only_completed_missions_in_order", () =>
+        {
+            var campaign = new CampaignState();
+            var empty = new TrainingMissionSelectionState(campaign);
+            Test.Equal(0, empty.Missions.Count);
+            Test.True(!empty.CanSelect(1), "empty campaign cannot select training");
+
+            campaign.CompletedMissions.UnionWith(["mission-2", "failed-override"]);
+            var state = new TrainingMissionSelectionState(campaign);
+            Test.Equal("1,2", string.Join(',', state.Missions));
+            Test.True(state.CanSelect(1), "completed Mission 1 is selectable");
+            Test.True(state.Select(2), "completed Mission 2 can be selected");
+            Test.Equal(2, state.SelectedMission);
+            Test.True(!state.Select(3), "locked Mission 3 is rejected");
+            Test.True(!state.Select(99), "unknown missions are rejected");
+        });
+
+        Test.Run("training_mission_selector_copy_explains_permanent_participant_rewards", () =>
+        {
+            Test.Equal("TRAINING SIMULATION", TrainingMissionSelectionPresentation.Title);
+            Test.True(TrainingMissionSelectionPresentation.Explanation.Contains("full XP"), "copy promises full XP");
+            Test.True(TrainingMissionSelectionPresentation.Explanation.Contains("Class Progressions"), "copy explains class rewards");
+            Test.True(TrainingMissionSelectionPresentation.Explanation.Contains("deployed crew"), "copy limits rewards to participants");
+            Test.Equal("No completed missions are available for simulation yet.", TrainingMissionSelectionPresentation.EmptyMessage);
+            Test.Equal("Mission 1 · Failed Override", TrainingMissionSelectionPresentation.MissionTitle(1));
+            Test.Equal("Rescue the simulated Issac from corrupted security droids.", TrainingMissionSelectionPresentation.Objective(1));
+            Test.Equal("Reach the security-center passage and keep the crew alive.", TrainingMissionSelectionPresentation.Objective(2));
+            Test.Equal("Defeat Ompok's proxy force before it takes the bridge.", TrainingMissionSelectionPresentation.Objective(3));
+        });
+
+        Test.Run("post_mission_navigation_separates_campaign_and_training_actions", () =>
+        {
+            var afterOne = new CampaignState();
+            afterOne.CompletedMissions.Add("failed-override");
+            var campaign = new PostMissionNavigationState(afterOne, 1, MissionRunMode.Campaign);
+            Test.True(campaign.CanAdvanceCampaign, "Mission 1 campaign victory advances");
+            Test.Equal(2, campaign.NextCampaignMission);
+            Test.True(campaign.CanOpenTraining, "completed mission enables training");
+            Test.Equal("Advance to Next Campaign Mission", campaign.PrimaryLabel);
+            Test.Equal("Replay Previous Missions in Training Simulation", campaign.TrainingLabel);
+
+            var afterThree = new CampaignState();
+            afterThree.CompletedMissions.UnionWith(["failed-override", "mission-2", "mission-3"]);
+            var finale = new PostMissionNavigationState(afterThree, 3, MissionRunMode.Campaign);
+            Test.True(!finale.CanAdvanceCampaign, "current final mission has no campaign advance");
+            Test.Equal(null, finale.NextCampaignMission);
+
+            var training = new PostMissionNavigationState(afterOne, 1, MissionRunMode.TrainingSimulation);
+            Test.Equal("Replay Another Training Mission", training.PrimaryLabel);
+            Test.Equal("Return to Campaign", training.ReturnLabel);
+            Test.Equal("Return to Main Menu", training.SecondaryLabel);
+            Test.Equal(PostMissionReturnTarget.CampaignMission, training.ReturnTarget);
+            var finalTraining = new PostMissionNavigationState(afterThree, 3, MissionRunMode.TrainingSimulation);
+            Test.Equal(PostMissionReturnTarget.MainMenu, finalTraining.ReturnTarget);
+            Test.Equal("Return to Main Menu", finalTraining.ReturnLabel);
+            Test.True(!finalTraining.ShowSecondaryAction, "final simulation does not duplicate the main-menu action");
+        });
+
+        Test.Run("simulation_presentation_is_persistent_and_skips_story_scenes", () =>
+        {
+            Test.Equal("VIRTUAL REPLAY", MissionRunPresentation.BattleBanner(MissionRunMode.TrainingSimulation));
+            Test.Equal("TRAINING SIMULATION COMPLETE", MissionRunPresentation.ResultHeading(MissionRunMode.TrainingSimulation, victory: true));
+            Test.Equal("TRAINING SIMULATION FAILED", MissionRunPresentation.ResultHeading(MissionRunMode.TrainingSimulation, victory: false));
+            Test.Equal("TRAINING SIMULATION REWARDS", MissionRunPresentation.RewardHeading(MissionRunMode.TrainingSimulation));
+            Test.Equal("issac", MissionRunPresentation.ArtworkId("simulated-issac-captive"));
+            Test.Equal("", MissionRunPresentation.BattleBanner(MissionRunMode.Campaign));
+            Test.True(!MissionRunPresentation.ShouldPlayIntro(MissionRunMode.TrainingSimulation, 2), "simulation skips Mission 2 intro");
+            Test.True(!MissionRunPresentation.ShouldPlayIntro(MissionRunMode.TrainingSimulation, 3), "simulation skips Mission 3 intro");
+            Test.True(!MissionRunPresentation.ShouldPlayWrapUp(MissionRunMode.TrainingSimulation, 1), "simulation skips Mission 1 wrap-up");
+            Test.True(!MissionRunPresentation.ShouldPlayWrapUp(MissionRunMode.TrainingSimulation, 2), "simulation skips Mission 2 wrap-up");
+            Test.True(!MissionRunPresentation.ShouldPlayTutorial(MissionRunMode.TrainingSimulation, 1), "simulation skips tutorial");
+            Test.True(MissionRunPresentation.ShouldPlayIntro(MissionRunMode.Campaign, 2), "campaign keeps Mission 2 intro");
+            Test.True(MissionRunPresentation.ShouldPlayWrapUp(MissionRunMode.Campaign, 1), "campaign keeps Mission 1 wrap-up");
+            Test.True(MissionRunPresentation.ShouldPlayTutorial(MissionRunMode.Campaign, 1), "campaign keeps tutorial");
+        });
+
+        Test.Run("simulation_crew_selection_uses_unlocked_roster_and_explicit_copy", () =>
+        {
+            var campaign = new CampaignState();
+            campaign.CompletedMissions.Add("failed-override");
+            var state = new CrewSelectionState(campaign, 1, [], MissionRunMode.TrainingSimulation);
+            foreach (var id in new[] { "xander", "nance", "akiko", "issac" }) Test.True(state.Toggle(id), $"simulation selects {id}");
+            Test.True(state.CanContinue, "four unlocked simulation crew can continue");
+            Test.Equal("SELECT YOUR SIMULATION CREW", CrewSelectionPresentation.TitleFor(MissionRunMode.TrainingSimulation));
+            Test.True(CrewSelectionPresentation.InstructionFor(MissionRunMode.TrainingSimulation).Contains("permanent"), "simulation crew copy explains permanent progress");
+            Test.True(PostMissionNavigationState.CanOpenTrainingFromLanding(campaign), "landing training action appears after completion");
+            Test.True(!PostMissionNavigationState.CanOpenTrainingFromLanding(new CampaignState()), "new campaign hides training action");
+        });
+
+        Test.Run("mission_three_roster_selects_exactly_four_of_six", () =>
+        {
+            var state = new CrewSelectionState(new CampaignState(), 3, []);
+            Test.Equal("CREW SELECTED 0 / 4", state.CountLabel);
+            Test.True(!state.CanContinue, "an empty roster cannot continue");
+            foreach (var id in new[] { "xander", "nance", "akiko" }) Test.True(state.Toggle(id), $"selects {id}");
+            Test.True(!state.CanContinue, "three characters cannot continue");
+            Test.True(state.Toggle("jeane"), "selects Captain Gershon fourth");
+            Test.True(state.CanContinue, "exactly four available characters can continue");
+            Test.Equal("CREW SELECTED 4 / 4", state.CountLabel);
+            Test.True(!state.CanSelect("issac"), "a fifth character is locked until one is removed");
+            Test.True(state.Toggle("nance"), "a selected optional character can be removed");
+            Test.True(!state.CanContinue, "removing one disables Continue");
+        });
+
+        Test.Run("selection_rejects_duplicates_and_unavailable_ids", () =>
+        {
+            var state = new CrewSelectionState(new CampaignState(), 3, new[] { "xander", "xander", "unknown", "akiko" });
+            Test.Equal(2, state.SelectedIds.Count);
+            Test.Equal("xander", state.SelectedIds[0]);
+            Test.Equal("akiko", state.SelectedIds[1]);
+            Test.True(!state.Toggle("unknown"), "unavailable IDs are rejected");
+            Test.True(state.Toggle("xander"), "a duplicate seed produces only one removable selection");
+            Test.True(!state.IsSelected("xander"), "the single normalized selection is removed");
+        });
+
+        Test.Run("required_crew_are_locked_and_count_toward_limit", () =>
+        {
+            var state = new CrewSelectionState(new CampaignState(), 2, []);
+            Test.Equal(4, state.SelectedIds.Count);
+            Test.True(state.CanContinue, "Mission 2's four required crew form a valid roster");
+            foreach (var id in new[] { "xander", "nance", "akiko", "issac" })
+            {
+                Test.True(state.IsRequired(id), $"{id} is required");
+                Test.True(state.IsSelected(id), $"{id} starts selected");
+                Test.True(!state.CanSelect(id), $"{id} cannot be toggled off");
+                Test.True(!state.Toggle(id), $"{id} remains locked");
+            }
+        });
+
+        Test.Run("four_required_crew_lock_optional_cards", () =>
+        {
+            var state = new CrewSelectionState(new CampaignState(), 2, []);
+            Test.True(!state.CanSelect("jeane"), "a card outside the mission roster cannot be selected when required slots are full");
+            Test.Equal("Four crew members selected. Remove one optional crew member to choose another.", CrewSelectionPresentation.MaximumMessage);
+        });
+
+        Test.Run("selection_order_survives_toggle_and_reopen", () =>
+        {
+            var state = new CrewSelectionState(new CampaignState(), 3, new[] { "chrandy", "akiko", "jeane", "xander" });
+            Test.True(state.Toggle("akiko"), "Akiko can be removed");
+            Test.True(state.Toggle("issac"), "Issac fills the open slot");
+            Test.Equal("chrandy,jeane,xander,issac", string.Join(',', state.SelectedIds));
+
+            var reopened = new CrewSelectionState(new CampaignState(), 3, state.SelectedIds);
+            Test.Equal("chrandy,jeane,xander,issac", string.Join(',', reopened.SelectedIds));
+            Test.True(reopened.CanContinue, "reopened valid draft remains ready");
+        });
+
+        Test.Run("crew_selection_copy_is_explicit_and_accessible", () =>
+        {
+            Test.Equal("SELECT YOUR CREW", CrewSelectionPresentation.Title);
+            Test.Equal("Choose 4 crew members for this mission.", CrewSelectionPresentation.Instruction);
+            Test.Equal("✓ SELECTED", CrewSelectionPresentation.CardStatus(selected: true, required: false));
+            Test.Equal("REQUIRED", CrewSelectionPresentation.CardStatus(selected: true, required: true));
+            Test.Equal("", CrewSelectionPresentation.CardStatus(selected: false, required: false));
+            Test.Equal("Continue to Preparation", CrewSelectionPresentation.ContinueLabel);
+
+            var open = new CrewSelectionState(new CampaignState(), 3, ["xander", "nance", "akiko"]);
+            var full = new CrewSelectionState(new CampaignState(), 3, ["xander", "nance", "akiko", "jeane"]);
+            Test.Equal("", CrewSelectionPresentation.SelectionMessage(open));
+            Test.Equal("Four crew members selected. Remove one optional crew member to choose another.", CrewSelectionPresentation.SelectionMessage(full));
+        });
+
         Test.Run("class_progression_requires_matching_first_tier", () =>
         {
             var campaign=new CampaignState();var p=campaign.Progress("xander");p.PendingClassProgressions=2;
@@ -578,6 +1123,164 @@ static class Program
             Test.True(campaign.ChooseClassProgression("xander","xander-marksman-1"),"tier one selected");
             Test.True(campaign.ChooseClassProgression("xander","xander-marksman-2"),"matching tier two unlocked");
             Test.True(!campaign.ChooseClassProgression("xander","xander-marksman-2"),"cannot select twice");
+        });
+
+        Test.Run("captain_has_elite_base_stats_and_weapons", () =>
+        {
+            var battle = new BattleState(3, new CampaignState(), ["xander", "nance", "chrandy", "jeane"]);
+            var captain = battle.Units.Single(unit => unit.Id == "jeane");
+            Test.Equal(Role.Captain, captain.Role);
+            Test.Equal(24, captain.MaxHp);
+            Test.Equal(2, captain.Armor);
+            Test.Equal(6, captain.Move);
+            Test.Equal(2, captain.Weapons.Count);
+            Test.Equal(new Weapon("Pulse rifle", 8, 4), captain.Weapons[0]);
+            Test.Equal(new Weapon("Officer's blade", 10, 1), captain.Weapons[1]);
+        });
+
+        Test.Run("captain_issue_order_refreshes_one_named_ally_once", () =>
+        {
+            var battle = new BattleState(3, new CampaignState(), ["xander", "nance", "akiko", "jeane"]);
+            var captain = battle.Units.Single(unit => unit.Id == "jeane");
+            var xander = battle.Units.Single(unit => unit.Id == "xander");
+            captain.Position = new Cell(5, 5);
+            xander.Position = new Cell(5, 7);
+            var destination = battle.Reach(xander).Keys.First(cell => cell != xander.Position && cell.Distance(captain.Position) <= 2);
+            Test.True(battle.Move(xander, destination), "Xander has a movement action to refresh");
+            xander.Acted = true;
+
+            Test.True(battle.CanIssueOrder(captain, xander), "a nearby named ally who acted is a legal target");
+            Test.True(battle.IssueOrder(captain, xander), "Captain issues her order");
+            Test.True(!xander.Moved && !xander.Acted, "the ally receives a complete additional turn");
+            Test.True(captain.Acted, "Issue Order costs the Captain's action");
+            Test.Equal(0, battle.IssueOrderUsesRemaining);
+            Test.True(!battle.UndoMove(xander), "the refreshed ally cannot undo the movement from before the order");
+            captain.Acted = false;
+            xander.Acted = true;
+            Test.True(!battle.IssueOrder(captain, xander), "base Issue Order cannot be used twice");
+            Test.Equal(20, battle.LastXpAward);
+        });
+
+        Test.Run("captain_issue_order_rejects_illegal_targets", () =>
+        {
+            var battle = new BattleState(3, new CampaignState(), ["xander", "nance", "akiko", "jeane"]);
+            var captain = battle.Units.Single(unit => unit.Id == "jeane");
+            var xander = battle.Units.Single(unit => unit.Id == "xander");
+            var akiko = battle.Units.Single(unit => unit.Id == "akiko");
+            captain.Position = new Cell(5, 5);
+            xander.Position = new Cell(5, 7);
+            xander.Moved = true;
+            Test.True(!battle.CanIssueOrder(captain, captain), "Captain cannot order herself");
+            Test.True(!battle.CanIssueOrder(captain, akiko), "a fresh ally does not need an order");
+            xander.Position = new Cell(5, 8);
+            Test.True(!battle.CanIssueOrder(captain, xander), "base order range is two");
+            xander.Position = new Cell(5, 7);
+            xander.Hp = 0;
+            Test.True(!battle.CanIssueOrder(captain, xander), "a defeated ally cannot be ordered");
+            xander.Hp = xander.MaxHp;
+            xander.Captured = true;
+            Test.True(!battle.CanIssueOrder(captain, xander), "a captured ally cannot be ordered");
+            xander.Captured = false;
+
+            var robot = new Unit { Id = "robot-test", Name = "Support robot", Token = "R", Role = Role.Robot, Team = Team.Player, Position = new Cell(5, 6), Hp = 10, BaseHp = 10, Moved = true, ControllerId = "akiko" };
+            var droid = battle.Units.First(unit => unit.Team == Team.Enemy);
+            droid.Team = Team.Player;
+            droid.ControllerId = "issac";
+            droid.Position = new Cell(4, 5);
+            droid.Moved = true;
+            Test.True(!battle.CanIssueOrder(captain, robot), "summoned robots cannot receive Captain's order");
+            Test.True(!battle.CanIssueOrder(captain, droid), "reprogrammed robots cannot receive Captain's order");
+            xander.Moved = xander.Acted = true;
+            xander.SkippedByStun = true;
+            Test.True(!battle.CanIssueOrder(captain, xander), "a stunned ally who skipped the turn cannot receive an order");
+        });
+
+        Test.Run("captain_class_progressions_apply_their_tiered_effects", () =>
+        {
+            var definitions = ClassProgressionCatalog.For("jeane");
+            Test.Equal(6, definitions.Count);
+            Test.True(definitions.Count(item => item.Tier == 1 && item.Prerequisite is null) == 3, "three tier-one Captain paths");
+            Test.True(definitions.Count(item => item.Tier == 2 && item.Prerequisite is not null) == 3, "three prerequisite-gated tier-two rewards");
+
+            var commandCampaign = new CampaignState();
+            commandCampaign.Progress("jeane").ClassProgressions.UnionWith(["jeane-command-1", "jeane-command-2"]);
+            var commandBattle = new BattleState(3, commandCampaign, ["xander", "nance", "chrandy", "jeane"]);
+            var captain = commandBattle.Units.Single(unit => unit.Id == "jeane");
+            var xander = commandBattle.Units.Single(unit => unit.Id == "xander");
+            captain.Position = new Cell(5, 5);
+            xander.Position = new Cell(5, 8);
+            xander.Acted = true;
+            Test.True(commandBattle.CanIssueOrder(captain, xander), "Command I increases range to three");
+            Test.True(commandBattle.IssueOrder(captain, xander), "first Command II order succeeds");
+            Test.Equal(1, commandBattle.IssueOrderUsesRemaining);
+            commandBattle.StartEnemy(); commandBattle.StartPlayer();
+            captain.Acted = false; xander.Acted = true;
+            Test.True(!commandBattle.CanIssueOrder(captain, xander), "round 2 remains on cooldown");
+            commandBattle.StartEnemy(); commandBattle.StartPlayer();
+            captain.Acted = false; xander.Acted = true;
+            Test.True(!commandBattle.CanIssueOrder(captain, xander), "round 3 remains on cooldown");
+            commandBattle.StartEnemy(); commandBattle.StartPlayer();
+            captain.Acted = false; xander.Acted = true;
+            Test.True(commandBattle.CanIssueOrder(captain, xander), "round 4 unlocks the second order");
+            Test.Equal(0, commandBattle.IssueOrderCooldownRounds);
+            Test.True(commandBattle.IssueOrder(captain, xander), "second order succeeds after cooldown");
+
+            var marksmanCampaign = new CampaignState();
+            marksmanCampaign.Progress("jeane").ClassProgressions.UnionWith(["jeane-sharpshooter-1", "jeane-sharpshooter-2"]);
+            var marksmanBattle = new BattleState(3, marksmanCampaign, ["xander", "nance", "chrandy", "jeane"]);
+            var marksman = marksmanBattle.Units.Single(unit => unit.Id == "jeane");
+            var armored = marksmanBattle.Units.First(unit => unit.Team == Team.Enemy);
+            marksman.Position = new Cell(5, 5); armored.Position = new Cell(5, 8);
+            Test.Equal(5, marksman.Weapons[0].Range);
+            var pulseDamage = marksmanBattle.PreviewDamage(marksman, armored, marksman.Weapons[0]);
+            var expectedPulse = Math.Max(1, marksman.Weapons[0].Power - Math.Max(0, armored.Armor - 1));
+            Test.Equal(expectedPulse, pulseDamage);
+            Test.Equal(Math.Max(1, marksman.Weapons[1].Power - armored.Armor), marksmanBattle.PreviewDamage(marksman, armored, marksman.Weapons[1]));
+
+            var duelistCampaign = new CampaignState();
+            duelistCampaign.Progress("jeane").ClassProgressions.UnionWith(["jeane-duelist-1", "jeane-duelist-2"]);
+            var duelistBattle = new BattleState(3, duelistCampaign, ["xander", "nance", "chrandy", "jeane"]);
+            var duelist = duelistBattle.Units.Single(unit => unit.Id == "jeane");
+            var target = duelistBattle.Units.First(unit => unit.Team == Team.Enemy);
+            Test.Equal(12, duelist.Weapons[1].Power);
+            duelist.Position = new Cell(5, 5); target.Position = new Cell(5, 6); target.Hp = 1; duelist.Moved = true;
+            Test.True(duelistBattle.Attack(duelist, target, 1), "Duelist defeats an adjacent enemy");
+            Test.True(!duelist.Moved, "Duelist II restores movement after the melee defeat");
+        });
+
+        Test.Run("mission_one_and_two_skip_roster_selection", () =>
+        {
+            Test.Equal(MissionLaunchStage.CrewPreparation, new MissionLaunchFlowState(1, []).Stage);
+            Test.Equal(MissionLaunchStage.CrewPreparation, new MissionLaunchFlowState(2, []).Stage);
+        });
+
+        Test.Run("mission_three_opens_selection_before_preparation", () =>
+        {
+            var flow = new MissionLaunchFlowState(3, []);
+            Test.Equal(MissionLaunchStage.RosterSelection, flow.Stage);
+            Test.True(!flow.ConfirmRoster(["xander", "nance", "akiko"]), "three crew cannot advance");
+            Test.True(flow.ConfirmRoster(["xander", "nance", "akiko", "issac"]), "four crew advance");
+            Test.Equal(MissionLaunchStage.CrewPreparation, flow.Stage);
+        });
+
+        Test.Run("preparation_back_preserves_roster_draft", () =>
+        {
+            var roster = new[] { "jeane", "chrandy", "nance", "issac" };
+            var flow = new MissionLaunchFlowState(3, []);
+            flow.ConfirmRoster(roster);
+            flow.BackToRoster();
+            Test.Equal(MissionLaunchStage.RosterSelection, flow.Stage);
+            Test.True(flow.DraftRoster.SequenceEqual(roster), "draft order is preserved");
+        });
+
+        Test.Run("mission_three_intro_receives_confirmed_four", () =>
+        {
+            var roster = new[] { "jeane", "chrandy", "xander", "akiko" };
+            var flow = new MissionLaunchFlowState(3, []);
+            flow.ConfirmRoster(roster);
+            Test.True(flow.BeginCinematic(), "prepared roster begins cinematic");
+            Test.Equal(MissionLaunchStage.Cinematic, flow.Stage);
+            Test.True(flow.DraftRoster.SequenceEqual(roster), "cinematic receives confirmed roster");
         });
 
         Test.Run("recon_progressions_reveal_and_reduce_revealed_armor", () =>
@@ -652,50 +1355,50 @@ static class Program
             Test.Equal(1, battle.Campaign.Progress("xander").PendingClassProgressions);
         });
 
-        Test.Run("veteran_replay_progression_is_rolled_back", () =>
+        Test.Run("simulation_veterans_keep_full_xp_and_gain_available_progression", () =>
         {
             var campaign = new CampaignState();
+            campaign.CompletedMissions.Add("failed-override");
             campaign.Progress("xander").CompletedMissionIds.Add("failed-override");
             campaign.Progress("xander").Xp = 35;
-            var battle = new BattleState(1, campaign);
+            var battle = new BattleState(1, campaign, ["xander", "nance", "akiko", "issac"], MissionRunMode.TrainingSimulation);
             var xander = battle.Units.Single(u => u.Id == "xander");
             xander.Position = battle.Issac.Position.Neighbors().First(battle.Floor);
 
             Test.True(battle.Interact(xander), "replay objective completes");
 
-            Test.Equal(35, campaign.Progress("xander").Xp);
-            Test.Equal(0, campaign.Progress("xander").PendingClassProgressions);
+            Test.Equal(55, campaign.Progress("xander").Xp);
+            Test.Equal(1, campaign.Progress("xander").PendingClassProgressions);
+            Test.Equal("failed-override", string.Join(',', campaign.CompletedMissions));
         });
 
-        Test.Run("mixed_replay_roster_commits_only_new_character_progress", () =>
+        Test.Run("simulation_commits_only_deployed_character_progress", () =>
         {
             var campaign = new CampaignState();
-            campaign.Progress("xander").CompletedMissionIds.Add("mission-3");
+            campaign.CompletedMissions.UnionWith(["failed-override", "mission-2", "mission-3"]);
             campaign.Progress("xander").Xp = 10;
             var roster = new[] { "xander", "nance", "issac", "chrandy" };
-            var battle = new BattleState(3, campaign, roster);
+            var battle = new BattleState(3, campaign, roster, MissionRunMode.TrainingSimulation);
             campaign.AwardXp("xander", 40);
             campaign.AwardXp("chrandy", 30);
             foreach (var enemy in battle.Units.Where(u => u.Team == Team.Enemy)) enemy.Hp = 0;
 
             battle.Evaluate();
 
-            Test.Equal(10, campaign.Progress("xander").Xp);
-            Test.Equal(0, campaign.Progress("xander").PendingClassProgressions);
+            Test.Equal(50, campaign.Progress("xander").Xp);
+            Test.Equal(1, campaign.Progress("xander").PendingClassProgressions);
             Test.Equal(30, campaign.Progress("chrandy").Xp);
             Test.Equal(1, campaign.Progress("chrandy").PendingClassProgressions);
-            Test.True(campaign.HasMissionCredit("chrandy", "mission-3"), "new character receives credit");
+            Test.Equal(0, campaign.Progress("akiko").Xp);
+            Test.Equal(0, campaign.Progress("akiko").PendingClassProgressions);
             Test.Equal(40, battle.MissionXpGains["xander"]);
             Test.Equal(30, battle.MissionXpGains["chrandy"]);
-            Test.True(battle.NewlyRewardedIds.Contains("chrandy"), "reward summary identifies new recipient");
-            Test.True(!battle.NewlyRewardedIds.Contains("xander"), "veteran is review-only");
+            Test.True(battle.NewlyRewardedIds.SetEquals(roster), "each deployed crew member with catalog room receives a reward");
         });
 
-        Test.Run("replay_reserve_catchup_only_rewards_eligible_characters", () =>
+        Test.Run("campaign_victory_never_awards_reserve_catchup_xp", () =>
         {
             var campaign = new CampaignState();
-            campaign.Progress("xander").CompletedMissionIds.Add("mission-3");
-            campaign.Progress("akiko").CompletedMissionIds.Add("mission-3");
             var battle = new BattleState(3, campaign, new[] { "xander", "nance", "issac", "chrandy" });
             campaign.AwardXp("nance", 30);
             campaign.AwardXp("issac", 30);
@@ -705,6 +1408,133 @@ static class Program
             battle.Evaluate();
 
             Test.Equal(0, campaign.Progress("akiko").Xp);
+            Test.Equal(0, campaign.Progress("akiko").PendingClassProgressions);
+            Test.True(campaign.CompletedMissions.Contains("mission-3"), "campaign victory completes the canonical mission");
+        });
+
+        Test.Run("class_progression_rewards_stop_when_the_catalog_is_exhausted", () =>
+        {
+            var campaign = new CampaignState();
+            campaign.CompletedMissions.UnionWith(["failed-override", "mission-2", "mission-3"]);
+            campaign.Progress("xander").ClassProgressions.UnionWith(ClassProgressionCatalog.For("xander").Select(choice => choice.Id));
+            var battle = new BattleState(3, campaign, ["xander", "nance", "akiko", "jeane"], MissionRunMode.TrainingSimulation);
+            foreach (var enemy in battle.Units.Where(unit => unit.Team == Team.Enemy)) enemy.Hp = 0;
+
+            battle.Evaluate();
+
+            Test.Equal(0, campaign.Progress("xander").PendingClassProgressions);
+            Test.True(!battle.NewlyRewardedIds.Contains("xander"), "exhausted character is omitted from the reward queue");
+        });
+
+        Test.Run("mission_failure_restores_progression_and_bonds", () =>
+        {
+            var campaign = new CampaignState();
+            campaign.Progress("xander").Xp = 12;
+            campaign.Bonds[campaign.Key("xander", "nance")] = 1;
+            var battle = new BattleState(3, campaign, ["xander", "nance", "akiko", "jeane"]);
+            campaign.AwardXp("xander", 70);
+            campaign.GrowBonds(["xander", "nance", "akiko", "jeane"]);
+            foreach (var crew in battle.Units.Where(unit => unit.Team == Team.Player)) crew.Hp = 0;
+
+            battle.Evaluate();
+
+            Test.Equal(12, campaign.Progress("xander").Xp);
+            Test.Equal(1, campaign.Bond("xander", "nance"));
+            Test.Equal(0, campaign.Bond("xander", "akiko"));
+        });
+
+        Test.Run("mission_two_defeat_rules_distinguish_campaign_and_simulation", () =>
+        {
+            var simulationCampaign = new CampaignState();
+            simulationCampaign.CompletedMissions.UnionWith(["failed-override", "mission-2"]);
+            var simulation = new BattleState(2, simulationCampaign, ["xander", "nance", "akiko", "jeane"], MissionRunMode.TrainingSimulation);
+            simulation.Evaluate();
+            Test.Equal(Phase.Player, simulation.Phase);
+
+            var campaign = new CampaignState();
+            var story = new BattleState(2, campaign);
+            foreach (var crew in story.Units.Where(unit => unit.Team == Team.Player && unit.Id != "issac")) crew.Hp = 0;
+            story.Evaluate();
+            Test.Equal(Phase.Defeat, story.Phase);
+        });
+
+        Test.Run("defeat_restores_absent_records_and_legacy_only_progress_exactly", () =>
+        {
+            var campaign = new CampaignState();
+            campaign.CompletedMissions.Add("failed-override");
+            campaign.Levels["jeane"] = 5;
+            campaign.Experience["jeane"] = 42;
+            var battle = new BattleState(1, campaign, ["xander", "nance", "akiko", "issac"], MissionRunMode.TrainingSimulation);
+            Test.True(campaign.Progressions.ContainsKey("xander"), "battle materializes deployed progression after launch snapshot");
+            battle.Issac.Hp = 0;
+            battle.Evaluate();
+
+            Test.Equal(Phase.Defeat, battle.Phase);
+            Test.True(!campaign.Progressions.ContainsKey("xander"), "rollback removes a record absent before launch");
+            Test.Equal(5, campaign.Levels["jeane"]);
+            Test.Equal(42, campaign.Experience["jeane"]);
+            Test.True(!campaign.Progressions.ContainsKey("jeane"), "legacy-only reserve remains legacy-only");
+        });
+
+        Test.Run("mission_one_simulation_keeps_playable_and_captive_issac_distinct", () =>
+        {
+            var campaign = new CampaignState();
+            campaign.CompletedMissions.Add("failed-override");
+            var battle = new BattleState(1, campaign, ["xander", "nance", "akiko", "issac"], MissionRunMode.TrainingSimulation);
+            var playable = battle.Units.Single(unit => unit.Id == "issac");
+            var captive = battle.Issac;
+            Test.Equal(Team.Player, playable.Team);
+            Test.Equal(Team.Civilian, captive.Team);
+            Test.True(playable.Id != captive.Id, "the simulated captive has a distinct identity");
+            playable.Position = captive.Position.Neighbors().First(battle.Floor);
+
+            Test.True(battle.Interact(playable), "Issac can rescue the simulated Issac objective");
+            Test.Equal(Phase.Victory, battle.Phase);
+        });
+
+        Test.Run("training_simulation_end_to_end_preserves_campaign_and_rolls_back_failure", () =>
+        {
+            var campaign = new CampaignState();
+            foreach (var id in new[] { "xander", "nance", "akiko", "issac" })
+                campaign.SetTrainingPath(id, TrainingPath.Attack);
+
+            var campaignBattle = new BattleState(1, campaign);
+            var campaignXander = campaignBattle.Units.Single(unit => unit.Id == "xander");
+            campaignXander.Position = campaignBattle.Issac.Position.Neighbors().First(campaignBattle.Floor);
+            Test.True(campaignBattle.Interact(campaignXander), "canonical Mission 1 can be completed");
+            Test.True(TrainingSimulationPolicy.CompletedMissionNumbers(campaign).SequenceEqual([1]), "completion unlocks Mission 1 simulation");
+
+            var roster = new[] { "xander", "nance", "akiko", "issac" };
+            var reserveBefore = campaign.Progress("jeane").Clone();
+            var xanderBefore = campaign.Progress("xander").Clone();
+            var pendingBefore = xanderBefore.PendingClassProgressions;
+            var simulation = new BattleState(1, campaign, roster, MissionRunMode.TrainingSimulation);
+            var xander = simulation.Units.Single(unit => unit.Id == "xander");
+            var enemy = simulation.Units.First(unit => unit.Team == Team.Enemy);
+            xander.Position = enemy.Position.Neighbors().First(simulation.Floor);
+            Test.True(simulation.Attack(xander, enemy, 1), "simulation participant earns combat XP");
+            xander.Acted = false;
+            xander.Position = simulation.Issac.Position.Neighbors().First(simulation.Floor);
+            Test.True(simulation.Interact(xander), "simulation rescue completes the replay");
+
+            Test.Equal(xanderBefore.Xp + 45, campaign.Progress("xander").Xp);
+            Test.Equal(pendingBefore + 1, campaign.Progress("xander").PendingClassProgressions);
+            Test.Equal(reserveBefore.Xp, campaign.Progress("jeane").Xp);
+            Test.Equal(reserveBefore.PendingClassProgressions, campaign.Progress("jeane").PendingClassProgressions);
+            Test.True(campaign.CompletedMissions.SetEquals(["failed-override"]), "simulation does not mutate canonical completion");
+
+            var beforeFailedReplay = campaign.Progress("xander").Clone();
+            var failed = new BattleState(1, campaign, roster, MissionRunMode.TrainingSimulation);
+            var failedXander = failed.Units.Single(unit => unit.Id == "xander");
+            var failedEnemy = failed.Units.First(unit => unit.Team == Team.Enemy);
+            failedXander.Position = failedEnemy.Position.Neighbors().First(failed.Floor);
+            Test.True(failed.Attack(failedXander, failedEnemy, 1), "failed replay temporarily awards XP");
+            failed.Issac.Hp = 0;
+            failed.Evaluate();
+            Test.Equal(Phase.Defeat, failed.Phase);
+            Test.Equal(beforeFailedReplay.Xp, campaign.Progress("xander").Xp);
+            Test.Equal(beforeFailedReplay.PendingClassProgressions, campaign.Progress("xander").PendingClassProgressions);
+            Test.True(campaign.CompletedMissions.SetEquals(["failed-override"]), "defeat rollback preserves canonical completion");
         });
 
         Test.Run("legacy_completed_missions_migrate_to_safe_character_credit", () =>
@@ -722,6 +1552,7 @@ static class Program
                 Test.True(campaign.HasMissionCredit(id, "mission-2"), $"{id} receives safe Mission 2 credit");
             foreach (var id in new[] { "xander", "nance", "akiko", "issac", "chrandy" })
                 Test.True(campaign.HasMissionCredit(id, "mission-3"), $"{id} receives safe Mission 3 credit");
+            Test.True(!campaign.HasMissionCredit("jeane", "mission-3"), "legacy saves predate Gershon becoming deployable");
             Test.Equal(2, campaign.Progress("xander").Level);
         });
 

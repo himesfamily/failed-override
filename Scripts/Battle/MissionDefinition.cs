@@ -9,14 +9,15 @@ public sealed class MissionDefinition
     public int Number { get; }
     public TerrainCell[,] Terrain { get; }
     public IReadOnlyList<UnitSpawn> Spawns { get; }
+    public IReadOnlyList<Cell> PlayerSpawns { get; }
     public string[] UnitRows { get; }
     public Cell? Console { get; }
     public Cell? SecurityPassage { get; }
     public Cell? Bridge { get; }
 
-    MissionDefinition(int number, string[] terrainRows, string[] unitRows, Cell? console = null, Cell? securityPassage = null, Cell? bridge = null)
+    MissionDefinition(int number, string[] terrainRows, string[] unitRows, Cell? console = null, Cell? securityPassage = null, Cell? bridge = null, IReadOnlyList<Cell>? playerSpawns = null)
     {
-        Number = number; UnitRows = unitRows; Console = console; SecurityPassage = securityPassage; Bridge = bridge;
+        Number = number; UnitRows = unitRows; Console = console; SecurityPassage = securityPassage; Bridge = bridge; PlayerSpawns = playerSpawns ?? [];
         if (terrainRows.Length != 12 || terrainRows.Any(row => row.Length != 12)) throw new ArgumentException("Mission terrain must be 12x12.");
         if (unitRows.Length != 12 || unitRows.Any(row => row.Length != 12)) throw new ArgumentException("Mission spawns must be 12x12.");
         Terrain = new TerrainCell[12, 12];
@@ -40,13 +41,13 @@ public sealed class MissionDefinition
     {
         1 => new(1,
         ["############","#...#O.....#","#.#.#...P..#","#.#.....#..#","#c##..O.##.#","#....##....#","##.#.^^.#..#","#..#....#..#","#..c..#....#","#.#...#..#.#","#..........#","############"],
-        ["............",".....I.D....","............",".....D......","............","............","............",".....D......","............","............",".XNA........","............"], console: new(6,4)),
+        ["............",".....I.D....","............",".....D......","............","............","............",".....D......","............","............",".XNA........","............"], console: new(6,4), playerSpawns: [new(1,10),new(2,10),new(3,10),new(4,10)]),
         2 => new(2,
         ["############","#.........O#","#..PP......#","#....^.....#","#.cc##.ccc.#","#......#...#","#P^.##.#.#.#","#...#......#","#c#.#.###..#","#..........#","#..........#","############"],
-        ["............","............","............","...D.H......","............","............","............",".......D....","............",".XNAI.......","............","............"], securityPassage: new(10,1)),
+        ["............","............","............","...D.H......","............","............","............",".......D....","............",".XNAI.......","............","............"], securityPassage: new(10,1), playerSpawns: [new(1,9),new(2,9),new(3,9),new(4,9)]),
         3 => new(3,
         ["############","#........O.#","#..^..#....#","#..c..#....#","#.....###..#","#..........#","#.cc##.cc#.#","#..........#","#..^.......#","#..........#","#..........#","############"],
-        ["............","............","............","........K...",".M..........",".......Y....","............",".V..........",".......XNAI.",".....C......","............","............"], bridge: new(9,1)),
+        ["............","............","............","........K...",".M..........",".......Y....","............",".V..........","............","............","............","............"], bridge: new(9,1), playerSpawns: [new(7,8), new(8,8), new(9,8), new(10,8)]),
         _ => throw new ArgumentOutOfRangeException(nameof(mission))
     };
 }

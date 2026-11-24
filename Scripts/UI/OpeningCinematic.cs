@@ -8,22 +8,22 @@ public partial class OpeningCinematic : Control
 
     readonly Beat[] beats =
     [
-        new("ICE MOON OF ANAT · DOCKING STATION", "anat-docking-station", "CAPTAIN JEANE GERSON", "jeane", "Our cargo was unloaded and the new shipment loaded in record time. Thank you, Portmaster Gaxu. We’ll be on our way."),
+        new("ICE MOON OF ANAT · DOCKING STATION", "anat-docking-station", "CAPTAIN JEANE GERSHON", "jeane", "Our cargo was unloaded and the new shipment loaded in record time. Thank you, Portmaster Gaxu. We’ll be on our way."),
         new("ICE MOON OF ANAT · DOCKING STATION", "anat-docking-station", "PORTMASTER GAXU", "gaxu", "Just one last item of business, if you please, Captain.", true),
-        new("ICE MOON OF ANAT · DOCKING STATION", "anat-docking-station", "CAPTAIN JEANE GERSON", "jeane", "No thank you, Gaxu. We already paid your ‘surplus tax.’ We’re clean and good to go."),
+        new("ICE MOON OF ANAT · DOCKING STATION", "anat-docking-station", "CAPTAIN JEANE GERSHON", "jeane", "No thank you, Gaxu. We already paid your ‘surplus tax.’ We’re clean and good to go."),
         new("ICE MOON OF ANAT · DOCKING STATION", "anat-docking-station", "PORTMASTER GAXU", "gaxu", "Yes, of course. But I took the liberty of loading one extra item with your cargo bound for Cheromia.", true),
-        new("ICE MOON OF ANAT · DOCKING STATION", "anat-docking-station", "CAPTAIN JEANE GERSON", "jeane", "An extra item? What is it—drugs? Forbidden alien tech? You know I don’t play that game, Portmaster."),
+        new("ICE MOON OF ANAT · DOCKING STATION", "anat-docking-station", "CAPTAIN JEANE GERSHON", "jeane", "An extra item? What is it—drugs? Forbidden alien tech? You know I don’t play that game, Portmaster."),
         new("ICE MOON OF ANAT · DOCKING STATION", "anat-docking-station", "PORTMASTER GAXU", "gaxu", "Nothing like that. Just a small crate. Carry your foodstuffs to Cheromia and it will be quietly unloaded when you arrive.", true),
-        new("ICE MOON OF ANAT · DOCKING STATION", "anat-docking-station", "CAPTAIN JEANE GERSON", "jeane", "And what will this cargo be listed as on my shipping manifest?"),
+        new("ICE MOON OF ANAT · DOCKING STATION", "anat-docking-station", "CAPTAIN JEANE GERSHON", "jeane", "And what will this cargo be listed as on my shipping manifest?"),
         new("ICE MOON OF ANAT · DOCKING STATION", "anat-docking-station", "PORTMASTER GAXU", "gaxu", "There is no need to list it. Deliver it unopened and your future surplus taxes will be waived. Do we have an agreement?", true),
-        new("ICE MOON OF ANAT · DOCKING STATION", "anat-docking-station", "CAPTAIN JEANE GERSON", "jeane", "It isn’t some naked teenager in cryosleep, is it?"),
+        new("ICE MOON OF ANAT · DOCKING STATION", "anat-docking-station", "CAPTAIN JEANE GERSHON", "jeane", "It isn’t some naked teenager in cryosleep, is it?"),
         new("ICE MOON OF ANAT · DOCKING STATION", "anat-docking-station", "PORTMASTER GAXU", "gaxu", "No, no. Just don’t open it. And if curiosity gets the better of you, there are ways of knowing if the crate has been tampered with. Believe me—you do not want to do that.", true),
         new("STARSHIP AURORA · BRIDGE", "aurora-bridge", "XANDER MCRAVEN", "xander", "So he expects us to deliver a mystery box, unopened and without questions—and then we never have to bribe him to use his port again?"),
-        new("STARSHIP AURORA · BRIDGE", "aurora-bridge", "CAPTAIN JEANE GERSON", "jeane", "That’s what he says.", true),
+        new("STARSHIP AURORA · BRIDGE", "aurora-bridge", "CAPTAIN JEANE GERSHON", "jeane", "That’s what he says.", true),
         new("STARSHIP AURORA · BRIDGE", "aurora-bridge", "NANCE PARKER", "nance", "You know it’s a naked teenager in cryosleep, right?"),
-        new("STARSHIP AURORA · BRIDGE", "aurora-bridge", "CAPTAIN JEANE GERSON", "jeane", "I already asked. He says no.", true),
+        new("STARSHIP AURORA · BRIDGE", "aurora-bridge", "CAPTAIN JEANE GERSHON", "jeane", "I already asked. He says no.", true),
         new("STARSHIP AURORA · BRIDGE", "aurora-bridge", "AKIKO IKEDA", "akiko", "And you believe him? I say we crack it open and take a look."),
-        new("STARSHIP AURORA · BRIDGE", "aurora-bridge", "CAPTAIN JEANE GERSON", "jeane", "Can’t do that. If we open it, the deal is off.", true),
+        new("STARSHIP AURORA · BRIDGE", "aurora-bridge", "CAPTAIN JEANE GERSHON", "jeane", "Can’t do that. If we open it, the deal is off.", true),
         new("STARSHIP AURORA · CARGO BAY", "aurora-cargo-bay", "ISSAC WYNTER", "issac", "We have to carry it, but we can’t open it? That sounds very suspicious."),
         new("STARSHIP AURORA · CARGO BAY", "aurora-cargo-bay", "AKIKO IKEDA", "akiko", "That’s what I think too, but Cap says we leave it sealed.", true),
         new("STARSHIP AURORA · CARGO BAY", "aurora-cargo-bay", "ISSAC WYNTER", "issac", "All right. I’ll leave it be. But there can’t be any harm in scanning it, can there?"),
@@ -68,7 +68,7 @@ public partial class OpeningCinematic : Control
         var atlas = GD.Load<Texture2D>("res://Assets/Atlases/enemies.png");
         var atlasSize = atlas.GetSize();
         portraits["droid"] = new AtlasTexture { Atlas = atlas, Region = new Rect2(0, 0, atlasSize.X / 3f, atlasSize.Y / 2f) };
-        screamPlayer = new AudioStreamPlayer { Bus = "Effects", VolumeDb = 5f, Stream = GD.Load<AudioStream>("res://Assets/Audio/SFX/issac_scream.wav") };
+        screamPlayer = new AudioStreamPlayer { Bus = "Effects", VolumeDb = 5f, Stream = GD.Load<AudioStream>(OpeningCinematicAudio.IssacScreamResource) };
         AddChild(screamPlayer);
 
         background = new TextureRect { Position = Vector2.Zero, Size = Size, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered, MouseFilter = MouseFilterEnum.Ignore };
@@ -192,7 +192,7 @@ public partial class OpeningCinematic : Control
         scene.Text = beat.Scene;
         speaker.Text = beat.Speaker;
         dialogue.Text = beat.Dialogue;
-        if (beat.Speaker == "SYSTEM" && !screamPlayer.Playing) screamPlayer.Play();
+        if (OpeningCinematicAudio.ShouldPlayIssacScream(beat.Speaker, beat.Dialogue) && !screamPlayer.Playing) screamPlayer.Play();
         portrait.Texture = beat.Portrait != "" ? portraits[beat.Portrait] : null;
         portrait.Visible = portrait.Texture != null;
         portrait.Position = new Vector2(beat.Right ? 915 : 55, 115);

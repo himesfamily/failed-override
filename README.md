@@ -8,6 +8,14 @@ Run the dependency-free battle logic checks with `dotnet run --project Tests/Fai
 
 This project is tracked in a local Git repository. No online remote repository is configured.
 
+## Version 3.26 training simulations
+
+After completing a campaign mission, choose **Training Simulation** from the landing screen or mission-results screen to replay any completed mission as a virtual exercise. Simulations skip story intros, wrap-ups, and the Mission 1 tutorial so play begins immediately.
+
+Choose exactly four unlocked named crew members for each simulation. Deployed crew earn full combat and utility XP, immediate Level Ups, bond growth, and one available Class Progression reward after a victory. Crew left behind receive no XP or progression. Class Progression rewards stop automatically after a character has exhausted the currently available catalog.
+
+Simulation victories do not change campaign mission completion or unlock later story missions. A failed campaign mission or simulation restores the participating crew's XP, Level Ups, Class Progressions, and bonds to their pre-mission state. Mission 1 uses a virtual captive copy of Issac, so Issac may be selected as a playable crew member while the rescue objective remains intact.
+
 ## Version 3.11 readable tactical terrain
 
 All three missions now use clean generated battlefields whose appearance matches their rules. Raised walls and pillars block movement and gunfire, low cargo blocks movement and grants 1 point of ranged cover, and marked raised containers can be climbed from any adjacent side for 2 extra movement points. Shooting downward gains 2 damage; shooting upward loses 1 damage. The painted battlefield underlays are temporarily disabled while these layouts are playtested, but objective and character artwork remains.
