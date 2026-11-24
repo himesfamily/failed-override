@@ -7,11 +7,11 @@ public partial class MissionOneWrapUp : Control
     sealed record Beat(string Speaker, string Portrait, string Dialogue, bool Right = false);
     readonly Beat[] beats =
     [
-        new("CAPTAIN JEANE GERSON", "jeane", "What happened? I told you not to touch that thing."),
+        new("CAPTAIN JEANE GERSHON", "jeane", "What happened? I told you not to touch that thing."),
         new("AKIKO IKEDA", "akiko", "We didn't touch anything. Issac just scanned it.", true),
-        new("CAPTAIN JEANE GERSON", "jeane", "Well, that must have been enough to trigger the defenses. How screwed are we?"),
+        new("CAPTAIN JEANE GERSHON", "jeane", "Well, that must have been enough to trigger the defenses. How screwed are we?"),
         new("ISSAC WYNTER", "issac", "I tried to override one of the hostile bots when they activated, but they shot me with a stasis ray that left me paralyzed. I wasn't able to move, but my mind was still free to explore their programming. We better get the crew together to talk about this. We are in for some serious pain if we aren't careful.", true),
-        new("CAPTAIN JEANE GERSON", "jeane", "It is a little late for ‘careful.’ But let's meet in the debriefing room to fill everyone in on what is happening."),
+        new("CAPTAIN JEANE GERSHON", "jeane", "It is a little late for ‘careful.’ But let's meet in the debriefing room to fill everyone in on what is happening."),
     ];
 
     readonly Dictionary<string, Texture2D> portraits = [];

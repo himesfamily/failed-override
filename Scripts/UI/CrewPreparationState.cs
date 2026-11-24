@@ -11,31 +11,36 @@ public sealed class CrewPreparationState
     readonly List<string> selectedOrder;
 
     public int Mission { get; }
+    public MissionRunMode Mode { get; }
     public IReadOnlyCollection<string> SelectedIds => selectedOrder;
 
     public CrewPreparationState(CampaignState campaign, int mission, IEnumerable<string> selected)
+        : this(campaign, mission, selected, MissionRunMode.Campaign) { }
+
+    public CrewPreparationState(CampaignState campaign, int mission, IEnumerable<string> selected, MissionRunMode mode)
     {
         this.campaign = campaign;
         Mission = mission;
+        Mode = mode;
         selectedOrder = [.. selected.Distinct()];
         selectedIds = [.. selectedOrder];
-        foreach (var id in campaign.AvailableCrew(mission)) draftPaths[id] = campaign.Progress(id).TrainingPath;
+        foreach (var id in campaign.AvailableCrew(mission, mode)) draftPaths[id] = campaign.Progress(id).TrainingPath;
     }
 
     public TrainingPath TrainingPathFor(string id) => draftPaths.GetValueOrDefault(id, campaign.Progress(id).TrainingPath);
     public string? DraftClassProgressionFor(string id) => draftClassProgressions.GetValueOrDefault(id);
     public bool IsSelected(string id) => selectedIds.Contains(id);
-    public bool IsRequired(string id) => campaign.RequiredCrew(Mission).Contains(id);
+    public bool IsRequired(string id) => campaign.RequiredCrew(Mission, Mode).Contains(id);
     public bool IsVeteran(string id, string missionId) => campaign.HasMissionCredit(id, missionId);
 
     public void SetTrainingPath(string id, TrainingPath path)
     {
-        if (campaign.AvailableCrew(Mission).Contains(id)) draftPaths[id] = path;
+        if (campaign.AvailableCrew(Mission, Mode).Contains(id)) draftPaths[id] = path;
     }
 
     public bool ToggleDeployment(string id, bool selected)
     {
-        if (!campaign.AvailableCrew(Mission).Contains(id)) return false;
+        if (!campaign.AvailableCrew(Mission, Mode).Contains(id)) return false;
         if (!selected)
         {
             if (IsRequired(id)) return false;
@@ -94,6 +99,6 @@ public sealed class CrewPreparationState
     }
 
     public bool CanBeginMission() =>
-        campaign.ValidateRoster(Mission, selectedIds) &&
+        campaign.ValidateRoster(Mission, selectedIds, Mode) &&
         selectedIds.All(id => campaign.Progress(id).TrainingPath != TrainingPath.Unassigned && campaign.Progress(id).PendingClassProgressions == 0);
 }

@@ -5,15 +5,6 @@ namespace FailedOverride.UI;
 
 public partial class CrewPreparationView : PanelContainer
 {
-    static readonly Dictionary<string, (string Name, string ClassName, int Health, int Armor, int Movement)> Crew = new()
-    {
-        ["xander"] = ("Xander McRaven", "Scout", 18, 1, 6),
-        ["nance"] = ("Nance Parker", "Shapeshifter", 20, 1, 5),
-        ["akiko"] = ("Akiko Ikeda", "Tech", 16, 1, 5),
-        ["issac"] = ("Issac Wynter", "Science Officer", 18, 0, 4),
-        ["chrandy"] = ("Dr. Chrandy Perra", "Medic", 17, 1, 5)
-    };
-
     readonly VBoxContainer content = new();
     CampaignState campaign = null!;
     CrewPreparationState state = null!;
@@ -21,6 +12,7 @@ public partial class CrewPreparationView : PanelContainer
     IReadOnlyDictionary<string, int> xpGains = new Dictionary<string, int>();
     IReadOnlySet<string> newlyRewarded = new HashSet<string>();
     Action<int, IReadOnlyList<string>>? begin;
+    Action? back;
     Action? finishRewards;
     Action? confirmedChoice;
     bool rewardMode;
@@ -52,26 +44,33 @@ public partial class CrewPreparationView : PanelContainer
         scroll.AddChild(content);
     }
 
-    public void OpenPreparation(CampaignState value, int mission, IEnumerable<string> selected, IReadOnlyDictionary<string, Texture2D> portraitTextures, Action<int, IReadOnlyList<string>> onBegin, Action onConfirmedChoice)
+    public void OpenPreparation(CampaignState value, int mission, IEnumerable<string> selected, IReadOnlyDictionary<string, Texture2D> portraitTextures, Action<int, IReadOnlyList<string>> onBegin, Action onConfirmedChoice, Action? onBack = null)
+        => OpenPreparation(value, mission, selected, MissionRunMode.Campaign, portraitTextures, onBegin, onConfirmedChoice, onBack);
+
+    public void OpenPreparation(CampaignState value, int mission, IEnumerable<string> selected, MissionRunMode mode, IReadOnlyDictionary<string, Texture2D> portraitTextures, Action<int, IReadOnlyList<string>> onBegin, Action onConfirmedChoice, Action? onBack = null)
     {
         campaign = value;
-        state = new(value, mission, selected);
+        state = new(value, mission, selected, mode);
         portraits = portraitTextures;
         begin = onBegin;
+        back = onBack;
         finishRewards = null;
         confirmedChoice = onConfirmedChoice;
         rewardMode = false;
         confirmed.Clear();
-        currentId = value.AvailableCrew(mission).First();
+        currentId = state.SelectedIds.First();
         Visible = true;
         Rebuild();
     }
 
     public void OpenRewards(CampaignState value, int mission, IEnumerable<string> deployed, IReadOnlyDictionary<string, Texture2D> portraitTextures, IReadOnlyDictionary<string, int> missionXpGains, IReadOnlySet<string> rewardRecipients, Action onFinished, Action onConfirmedChoice)
+        => OpenRewards(value, mission, deployed, MissionRunMode.Campaign, portraitTextures, missionXpGains, rewardRecipients, onFinished, onConfirmedChoice);
+
+    public void OpenRewards(CampaignState value, int mission, IEnumerable<string> deployed, MissionRunMode mode, IReadOnlyDictionary<string, Texture2D> portraitTextures, IReadOnlyDictionary<string, int> missionXpGains, IReadOnlySet<string> rewardRecipients, Action onFinished, Action onConfirmedChoice)
     {
         campaign = value;
         var roster = deployed.ToList();
-        state = new(value, mission, roster);
+        state = new(value, mission, roster, mode);
         portraits = portraitTextures;
         xpGains = missionXpGains;
         newlyRewarded = rewardRecipients;
@@ -88,7 +87,7 @@ public partial class CrewPreparationView : PanelContainer
     void Rebuild()
     {
         foreach (var child in content.GetChildren()) { content.RemoveChild(child); child.QueueFree(); }
-        var header = new Label { Text = rewardMode ? "MISSION REWARDS" : $"CREW PREPARATION · MISSION {state.Mission}" };
+        var header = new Label { Text = rewardMode ? MissionRunPresentation.RewardHeading(state.Mode) : state.Mode == MissionRunMode.TrainingSimulation ? $"TRAINING SIMULATION PREPARATION · MISSION {state.Mission}" : $"CREW PREPARATION · MISSION {state.Mission}" };
         header.AddThemeFontSizeOverride("font_size", 30);
         header.AddThemeColorOverride("font_color", new Color("f3c979"));
         content.AddChild(header);
@@ -100,7 +99,7 @@ public partial class CrewPreparationView : PanelContainer
     }
 
     string RewardSummary() => string.Join("   •   ", state.SelectedIds.Select(id =>
-        $"{Crew[id].Name}: +{xpGains.GetValueOrDefault(id)} XP{(newlyRewarded.Contains(id) ? " + Class Progression" : " (practice replay)")}"));
+        $"{CrewCatalog.Profile(id).Name}: +{xpGains.GetValueOrDefault(id)} XP{(newlyRewarded.Contains(id) ? " + Class Progression" : " · Current Class Progressions complete")}"));
 
     void BuildTrainingExplanation()
     {
@@ -135,23 +134,17 @@ public partial class CrewPreparationView : PanelContainer
         var row = new HBoxContainer();
         row.AddThemeConstantOverride("separation", 8);
         content.AddChild(row);
-        foreach (var id in rewardMode ? state.SelectedIds : campaign.AvailableCrew(state.Mission))
+        foreach (var id in state.SelectedIds)
         {
-            var button = new Button { Text = Crew[id].Name, ToggleMode = true, ButtonPressed = id == currentId, CustomMinimumSize = new Vector2(0, 42) };
+            var button = new Button { Text = CrewCatalog.Profile(id).Name, ToggleMode = true, ButtonPressed = id == currentId, CustomMinimumSize = new Vector2(0, 42) };
             button.Pressed += () => { currentId = id; Rebuild(); };
             row.AddChild(button);
-            if (!rewardMode)
-            {
-                var deploy = new CheckButton { Text = state.IsRequired(id) ? "Required" : "Deploy", ButtonPressed = state.IsSelected(id), Disabled = state.IsRequired(id) };
-                deploy.Toggled += selected => { state.ToggleDeployment(id, selected); Rebuild(); };
-                row.AddChild(deploy);
-            }
         }
     }
 
     void BuildCharacterCard(string id)
     {
-        var profile = Crew[id];
+        var profile = CrewCatalog.Profile(id);
         var progress = campaign.Progress(id);
         var card = new HBoxContainer();
         card.AddThemeConstantOverride("separation", 22);
@@ -212,13 +205,19 @@ public partial class CrewPreparationView : PanelContainer
         }
         else if (rewardMode && !newlyRewarded.Contains(id))
         {
-            details.AddChild(new Label { Text = "MISSION ALREADY COMPLETED · Existing abilities may be reviewed; no additional permanent reward is granted." });
+            details.AddChild(new Label { Text = "ALL CURRENT CLASS PROGRESSIONS ACQUIRED · XP and Level Ups still apply." });
         }
         var confirm = new Button { Text = $"Confirm {profile.Name}'s Choices", Disabled = !state.CanConfirmCharacter(id), CustomMinimumSize = new Vector2(0, 50) };
         confirm.Pressed += () => ConfirmCurrent(id);
         details.AddChild(confirm);
         if (!rewardMode)
         {
+            if (back is not null)
+            {
+                var backButton = new Button { Text = "Back to Crew Selection", CustomMinimumSize = new Vector2(0, 48) };
+                backButton.Pressed += () => { Visible = false; back(); };
+                details.AddChild(backButton);
+            }
             var beginButton = new Button { Text = "Begin Mission", Disabled = !state.CanBeginMission(), CustomMinimumSize = new Vector2(0, 54) };
             beginButton.Pressed += () => { if (state.CanBeginMission()) { Visible = false; begin?.Invoke(state.Mission, state.SelectedIds.ToList()); } };
             details.AddChild(beginButton);
@@ -267,7 +266,7 @@ public partial class CrewPreparationView : PanelContainer
 
     void BuildCompletedSummary()
     {
-        var summary = new Label { Text = "REWARDS CONFIRMED\n\n" + string.Join("\n", state.SelectedIds.Select(id => $"{Crew[id].Name} · Training Path: {campaign.Progress(id).TrainingPath} · {campaign.Progress(id).ClassProgressions.Count} Class Progressions")), HorizontalAlignment = HorizontalAlignment.Center };
+        var summary = new Label { Text = "REWARDS CONFIRMED\n\n" + string.Join("\n", state.SelectedIds.Select(id => $"{CrewCatalog.Profile(id).Name} · Training Path: {campaign.Progress(id).TrainingPath} · {campaign.Progress(id).ClassProgressions.Count} Class Progressions")), HorizontalAlignment = HorizontalAlignment.Center };
         summary.AddThemeFontSizeOverride("font_size", 22);
         content.AddChild(summary);
         var finish = new Button { Text = "Continue", CustomMinimumSize = new Vector2(0, 56) };

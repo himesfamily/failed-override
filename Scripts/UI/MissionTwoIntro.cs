@@ -4,8 +4,7 @@ namespace FailedOverride.UI;
 
 public partial class MissionTwoIntro : Control
 {
-    readonly Dictionary<string, Texture2D> portraits = [];
-    TextureRect portrait = null!;
+    BriefingSpeakerFocusView focus = null!;
     Label speaker = null!;
     Label dialogue = null!;
     Label progress = null!;
@@ -23,22 +22,20 @@ public partial class MissionTwoIntro : Control
         Visible = false;
         MouseFilter = MouseFilterEnum.Stop;
 
-        portraits["jeane"] = GD.Load<Texture2D>("res://Assets/Portraits/jeane-gerson-transparent.png");
-        portraits["issac"] = GD.Load<Texture2D>("res://Assets/Portraits/issac-wynter-transparent.png");
-        portraits["nance"] = GD.Load<Texture2D>("res://Assets/Portraits/nance-parker-transparent.png");
-        portraits["xander"] = GD.Load<Texture2D>("res://Assets/Portraits/xander-mcraven-transparent.png");
-
         AddChild(new ColorRect { Position = Vector2.Zero, Size = Size, Color = new Color(.005f, .01f, .025f), MouseFilter = MouseFilterEnum.Ignore });
+        var backgroundFrame = MissionTwoIntroScript.BackgroundFrame;
         AddChild(new TextureRect
         {
             Texture = GD.Load<Texture2D>("res://Assets/Cinematic/aurora-debriefing-room.png"),
-            Position = Vector2.Zero,
-            Size = Size,
+            Position = new Vector2(backgroundFrame.X, backgroundFrame.Y),
+            Size = new Vector2(backgroundFrame.Width, backgroundFrame.Height),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-            StretchMode = MissionTwoIntroScript.PreserveFullComposition ? TextureRect.StretchModeEnum.KeepAspectCentered : TextureRect.StretchModeEnum.KeepAspectCovered,
+            StretchMode = TextureRect.StretchModeEnum.Scale,
             MouseFilter = MouseFilterEnum.Ignore,
         });
         AddChild(new ColorRect { Position = Vector2.Zero, Size = Size, Color = new Color(.01f, .02f, .05f, .2f), MouseFilter = MouseFilterEnum.Ignore });
+        focus = new BriefingSpeakerFocusView();
+        AddChild(focus);
 
         var advance = new Button { Position = Vector2.Zero, Size = Size, Flat = true, FocusMode = FocusModeEnum.None, MouseDefaultCursorShape = CursorShape.PointingHand };
         advance.Pressed += Advance;
@@ -51,10 +48,6 @@ public partial class MissionTwoIntro : Control
         scene.AddThemeConstantOverride("shadow_offset_x", 2);
         scene.AddThemeConstantOverride("shadow_offset_y", 2);
         AddChild(scene);
-
-        var portraitLayout = MissionTwoIntroScript.ForegroundPortrait;
-        portrait = new TextureRect { Position = new Vector2(portraitLayout.X, portraitLayout.Y), Size = new Vector2(portraitLayout.Width, portraitLayout.Height), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, MouseFilter = MouseFilterEnum.Ignore };
-        AddChild(portrait);
 
         var panel = new PanelContainer { Position = new Vector2(70, 730), Size = new Vector2(1260, 300), MouseFilter = MouseFilterEnum.Ignore };
         panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(.025f, .055f, .105f, .96f), BorderColor = new Color("55d7e8"), BorderWidthLeft = 3, BorderWidthTop = 3, BorderWidthRight = 3, BorderWidthBottom = 3, CornerRadiusTopLeft = 14, CornerRadiusTopRight = 14, CornerRadiusBottomLeft = 14, CornerRadiusBottomRight = 14 });
@@ -125,7 +118,7 @@ public partial class MissionTwoIntro : Control
     void ShowFinalTransition()
     {
         showingFinalTransition = true;
-        portrait.Visible = false;
+        focus.Clear();
         transitionLayer.Visible = true;
         transitionLayer.Modulate = new Color(1, 1, 1, 0);
         CreateTween().TweenProperty(transitionLayer, "modulate:a", 1f, .55f);
@@ -136,15 +129,14 @@ public partial class MissionTwoIntro : Control
         var beat = MissionTwoIntroScript.Beats[index];
         speaker.Text = beat.Speaker;
         dialogue.Text = beat.Dialogue;
-        portrait.Texture = portraits[beat.Portrait];
-        portrait.Visible = true;
-        portrait.Position = new Vector2(MissionTwoIntroScript.ForegroundPortrait.X, MissionTwoIntroScript.ForegroundPortrait.Y);
+        focus.ShowSpeaker(beat.Portrait, null);
         progress.Text = $"CLICK TO CONTINUE   •   {index + 1}/{MissionTwoIntroScript.Beats.Count}";
     }
 
     void Finish()
     {
         if (!Visible) return;
+        focus.Clear();
         Visible = false;
         Finished?.Invoke();
     }
